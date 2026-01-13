@@ -6,11 +6,13 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  height: 80%;
 }
 
 .formContainer {
   margin: layout.$spacing-05;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  padding-bottom: layout.$spacing-11;
 }
 
 .tablet {
@@ -26,5 +28,5 @@
 }
 
 .formStackControl {
-  row-gap: layout.$layout-01;
+  margin-bottom: layout.$spacing-05;
 }

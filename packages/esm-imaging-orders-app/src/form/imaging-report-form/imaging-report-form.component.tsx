@@ -22,7 +22,7 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 
 import { type Result } from '../../imaging-tabs/work-list/work-list.resource';
-import { saveProcedureReport, useGetOrderConceptByUuid } from './imaging.resource';
+import { saveRadiologyReport, useGetOrderConceptByUuid } from './imaging.resource';
 
 import styles from './imaging-report-form.scss';
 
@@ -32,9 +32,16 @@ type ResultFormProps = DefaultWorkspaceProps & {
 };
 
 const imagingReportSchema = z.object({
-  procedureReport: z.string({ required_error: 'Imaging report is required' }).min(1, {
-    message: 'Imaging report is required',
+  // radiologyReport: z.string({ required_error: 'Imaging report is required' }).min(1, {
+  //   message: 'Imaging report is required',
+  // }),
+  findings: z.string({ required_error: 'Findings are required' }).min(1, {
+    message: '',
   }),
+  impressions: z.string({ required_error: 'Impressions are required' }).min(1, {
+    message: '',
+  }),
+  recommendations: z.string().optional(),
 });
 
 type ImagingReportFormData = z.infer<typeof imagingReportSchema>;
@@ -51,15 +58,22 @@ const ImagingReportForm: React.FC<ResultFormProps> = ({
   const { patient, isLoading } = usePatient(patientUuid);
   const { allowedFileExtensions } = useAllowedFileExtensions();
   const { concept, isLoading: isLoadingConcepts } = useGetOrderConceptByUuid(order.concept.uuid);
+  const schemaWithTranslations = imagingReportSchema.extend({
+    findings: z.string().min(1, { message: t('findingsRequiredMessage', 'Findings are required') }),
+    impressions: z.string().min(1, { message: t('ImpressionsRequiredMessage', 'impressions are required') }),
+  });
   const {
     formState: { isSubmitting, errors, isDirty },
     control,
     handleSubmit,
   } = useForm<ImagingReportFormData>({
     defaultValues: {
-      procedureReport: '',
+      // procedureReport: '',
+      findings: '',
+      impressions: '',
+      recommendations: ''
     },
-    resolver: zodResolver(imagingReportSchema),
+    resolver: zodResolver(schemaWithTranslations),
     mode: 'all',
   });
 
@@ -92,15 +106,18 @@ const ImagingReportForm: React.FC<ResultFormProps> = ({
   const onSubmit = async (formData: ImagingReportFormData) => {
     const reportPayload = {
       patient: patientUuid,
-      procedureOrder: order.uuid,
+      radiologyOrder: order.uuid,
       concept: order.concept.uuid,
       status: 'COMPLETED',
-      procedureReport: formData.procedureReport,
+      // radiologyReport: formData.radiologyReport, 
+      radiologyFindings: formData.findings,
+      radiologyImpressions: formData.impressions,
+      radiologyRecommendations: formData.recommendations,
       encounters: [],
     };
 
     try {
-      const response = await saveProcedureReport(reportPayload);
+      const response = await saveRadiologyReport(reportPayload);
       if (response.ok) {
         showSnackbar({
           title: t('imagingOrderSaveSuccess', 'Imaging order saved successfully'),
@@ -139,23 +156,79 @@ const ImagingReportForm: React.FC<ResultFormProps> = ({
       )}
       <form aria-label="imaging form" className={styles.form} onSubmit={handleSubmit(onSubmit)}>
         <div className={styles.formContainer}>
-          <Stack gap={7}>
+          <h6>{concept?.display}</h6>
+          {/* <Stack gap={7} className={styles.formStackControl}>
             <ResponsiveWrapper>
               <Controller
                 control={control}
-                name="procedureReport"
+                name="radiologyReport"
                 render={({ field }) => (
                   <TextArea
-                    rows={10}
                     labelText={concept?.display}
-                    id="procedureReport"
-                    name="procedureReport"
-                    invalid={!!errors.procedureReport}
-                    invalidText={errors.procedureReport?.message}
+                    id="radiologyReport"
+                    name="radiologyReport"
+                    invalid={!!errors.radiologyReport}
+                    invalidText={errors.radiologyReport?.message}
                     {...field}
                   />
                 )}
               />
+            </ResponsiveWrapper>
+          </Stack> */}
+          <Stack gap={7} className={styles.formStackControl}>
+            <ResponsiveWrapper>
+              <Controller
+                control={control}
+                name="findings"
+                rules={{ required: t('findingsRequiredMessage','Findings are required') }}
+                render={({ field }) => (
+                  <TextArea
+                      labelText={t('findingsLabel', 'Findings')}
+                      id="findings"
+                      name="findings"
+                      invalid={!!errors.findings}
+                      invalidText={errors.findings?.message}
+                      {...field}
+                  />
+                )}
+                />
+            </ResponsiveWrapper>
+          </Stack>
+          <Stack gap={7} className={styles.formStackControl}>
+            <ResponsiveWrapper>
+              <Controller
+                control={control}
+                name="impressions"
+                rules={{ required: t('impressionsRequiredMessage','Impressions are required') }}
+                render={({ field }) => (
+                  <TextArea
+                      labelText={t('impressionsLabel', 'Impressions')}
+                      id="impressions"
+                      name="impressions"
+                      invalid={!!errors.impressions}
+                      invalidText={errors.impressions?.message}
+                      {...field}
+                    />
+                )}
+                />
+            </ResponsiveWrapper>
+          </Stack>
+          <Stack gap={7} className={styles.formStackControl}>
+            <ResponsiveWrapper>
+              <Controller
+                control={control}
+                name="recommendations"
+                render={({ field }) => (
+                  <TextArea
+                      labelText={t('recommendationsLabel', 'Recommendations')}
+                      id="recommendations"
+                      name="recommendations"
+                      invalid={!!errors.recommendations}
+                      invalidText={errors.recommendations?.message}
+                      {...field}
+                    />
+                )}
+                />
             </ResponsiveWrapper>
             <Button kind="tertiary" renderIcon={DocumentAttachment} onClick={showAddAttachmentModal}>
               {t('addAttachment', 'Add attachment')}

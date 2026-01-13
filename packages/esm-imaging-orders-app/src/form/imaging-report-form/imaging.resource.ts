@@ -341,9 +341,9 @@ export async function UpdateEncounter(uuid: string, payload: any) {
   });
 }
 
-export async function saveProcedureReport(reportPayload) {
+export async function saveRadiologyReport(reportPayload) {
   const abortController = new AbortController();
-  const updateResults = await openmrsFetch(`/ws/rest/v1/procedure`, {
+  const updateResults = await openmrsFetch(`/ws/rest/v1/radiology`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

@@ -126,5 +126,10 @@
   "urgency": "Urgency",
   "urgencyStatus": "Urgency: ",
   "viewReport": "View Report",
-  "workList": "Work List"
+  "workList": "Work List",
+  "findingsLabel" : "Findings",
+  "impressionsLabel" : "Impressions",
+  "recommendationsLabel" : "Recommendations",
+  "findingsRequiredMessage" : "Findings are required",
+  "impressionsRequiredMessage" : "Impressions are required"
 }
