@@ -1,7 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@carbon/react';
-import { showModal, launchWorkspace } from '@openmrs/esm-framework';
+import { Button, IconButton } from '@carbon/react';
+import { showModal, launchWorkspace, ViewIcon } from '@openmrs/esm-framework';
 import { type Order } from '@openmrs/esm-patient-common-lib';
 import OrderActionExtension from './order-action-extension.component';
 import { type Result } from '../../../../imaging-tabs/work-list/work-list.resource';
@@ -36,7 +36,32 @@ const ActionButton: React.FC<ActionButtonProps> = ({ action, order, patientUuid,
   const renderActionButton = () => {
     switch (action.actionName) {
       case 'add-imaging-to-work-list-modal':
-        return <OrderActionExtension order={order as unknown as Order} />;
+        return (
+        <Button
+          kind='primary'
+          size={size}
+          onClick={() => {
+            const dispose = showModal(action.actionName, {
+              closeModal: () => dispose(),
+              order: order,
+            });
+          }}>
+          {t('pickOrder', 'Pick Order')}
+        </Button>
+      );
+      
+      case 'view-radiology-report':
+        return (
+          <IconButton
+          label="View Image"
+          align="left"
+          kind="ghost"
+            onClick={() => { }
+          }
+          >
+            <ViewIcon />
+          </IconButton>
+        );
 
       case 'imaging-report-form':
         return (
