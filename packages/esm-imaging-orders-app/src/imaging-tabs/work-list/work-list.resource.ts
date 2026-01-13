@@ -30,6 +30,7 @@ export interface Result {
   specimenSource: SpecimenSource;
   laterality: string;
   bodySite: Concept;
+  modality: Concept;
   clinicalHistory: any;
   frequency: any;
   numberOfRepeats: any;

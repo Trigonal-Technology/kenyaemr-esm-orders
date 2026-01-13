@@ -4,7 +4,7 @@ export const configSchema = {
   radiologyConceptSetUuid: {
     _type: Type.String,
     _description: 'Radiology Concept SET UUID',
-    _default: '164068AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+    _default: 'cd9f116c-517d-439e-847d-d8d257434083',
   },
   radiologyConceptClassUuid: {
     _type: Type.String,
@@ -15,7 +15,7 @@ export const configSchema = {
     radiologyOrderTypeUuid: {
       _type: Type.UUID,
       _description: "UUID for the 'Radiology' order type",
-      _default: 'b4a7c280-369e-4d12-9ce8-18e36783fed6',
+      _default: 'c19c8e82-8b8d-4b4e-b1ff-3f09890b2db3',
     },
     labOrderTypeUuid: {
       _type: Type.UUID,

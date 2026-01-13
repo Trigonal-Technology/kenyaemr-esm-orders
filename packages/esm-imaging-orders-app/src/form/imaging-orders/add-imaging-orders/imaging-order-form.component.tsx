@@ -9,7 +9,7 @@ import {
   ExtensionSlot,
   launchWorkspace,
 } from '@openmrs/esm-framework';
-import { careSettingUuid, prepImagingOrderPostData } from '../api';
+import { careSettingUuid, prepImagingOrderPostData, useConceptById } from '../api';
 import {
   Button,
   ButtonSet,
@@ -29,7 +29,7 @@ import { useImagingTypes } from './useImagingTypes';
 import { Controller, type FieldErrors, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { moduleName } from '../../../constants';
+import { moduleName, BODY_SITE, MODALITY } from '../../../constants';
 import styles from './imaging-order-form.scss';
 import type { ImagingOrderBasketItem } from '../../../types';
 
@@ -62,6 +62,15 @@ export function ImagingOrderForm({
     { value: 'BILATERAL', label: 'Bilateral' },
   ];
 
+  const {
+    items: { answers: bodySiteItems = [] },
+  } = useConceptById(BODY_SITE);
+
+  const {
+    items: { setMembers: modalityItems = [] },
+  } = useConceptById(MODALITY);
+
+
   const imagingOrderFormSchema = z.object({
     instructions: z.string().optional(),
     urgency: z.string().refine((value) => value !== '', {
@@ -75,11 +84,10 @@ export function ImagingOrderForm({
       },
     ),
     scheduleDate: z.union([z.string(), z.date(), z.string().optional()]),
-    commentsToFulfiller: z.string().optional(),
+    commentToFulfiller: z.string().optional(),
     laterality: z.string().optional(),
-    orderReasonNonCoded: z.string().min(1, {
-      message: translateFrom(moduleName, 'addOrderReasonRequired', 'Order reason is required'),
-    }),
+    bodySite: z.string().optional(),
+    modality: z.string().optional(),
   });
 
   const {
@@ -255,6 +263,55 @@ export function ImagingOrderForm({
             <Column lg={16} md={8} sm={4}>
               <InputWrapper>
                 <Controller
+                  name="bodySite"
+                  control={control}
+                  render={({ field: { onChange, onBlur, value } }) => (
+                    <ComboBox
+                      size="lg"
+                      id="bodySiteInput"
+                      titleText={t('bodySite', 'Body Site')}
+                      selectedItem={bodySiteItems?.find((option) => option.uuid === value) || null}
+                      items={bodySiteItems}
+                      onBlur={onBlur}
+                      onChange={({ selectedItem }) => onChange(selectedItem?.uuid || '')}
+                      invalid={errors.bodySite?.message}
+                      invalidText={errors.bodySite?.message}
+                      itemToString={(item) => item?.display}
+                    />
+                  )}
+                />
+              </InputWrapper>
+            </Column>
+          </Grid>
+
+          <Grid className={styles.gridRow}>
+            <Column lg={16} md={8} sm={4}>
+              <InputWrapper>
+                <Controller
+                  name="modality"
+                  control={control}
+                  render={({ field: { onChange, onBlur, value } }) => (
+                    <ComboBox
+                      size="lg"
+                      id="modalityInput"
+                      titleText={t('modality', 'Modality')}
+                      selectedItem={modalityItems?.find((option) => option.uuid === value) || null}
+                      items={modalityItems}
+                      onBlur={onBlur}
+                      onChange={({ selectedItem }) => onChange(selectedItem?.uuid || '')}
+                      invalid={errors.modality?.message}
+                      invalidText={errors.modality?.message}
+                      itemToString={(item) => item?.display}
+                    />
+                  )}
+                />
+              </InputWrapper>
+            </Column>
+          </Grid>
+          {/* <Grid className={styles.gridRow}>
+            <Column lg={16} md={8} sm={4}>
+              <InputWrapper>
+                <Controller
                   name="orderReasonNonCoded"
                   control={control}
                   render={({ field: { onChange, onBlur, value } }) => (
@@ -274,7 +331,7 @@ export function ImagingOrderForm({
                 />
               </InputWrapper>
             </Column>
-          </Grid>
+          </Grid> */}
           <Grid className={styles.gridRow}>
             <Column lg={16} md={8} sm={4}>
               <InputWrapper>
@@ -303,7 +360,7 @@ export function ImagingOrderForm({
             <Column lg={16} md={8} sm={4}>
               <InputWrapper>
                 <Controller
-                  name="commentsToFulfiller"
+                  name="commentToFulfiller"
                   control={control}
                   render={({ field: { onChange, onBlur, value } }) => (
                     <TextArea
@@ -315,8 +372,8 @@ export function ImagingOrderForm({
                       onChange={onChange}
                       onBlur={onBlur}
                       maxCount={500}
-                      invalid={errors.commentsToFulfiller?.message}
-                      invalidText={errors.commentsToFulfiller?.message}
+                      invalid={errors.commentToFulfiller?.message}
+                      invalidText={errors.commentToFulfiller?.message}
                     />
                   )}
                 />

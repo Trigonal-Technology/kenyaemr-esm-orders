@@ -35,10 +35,11 @@ export function useOrderReasons(conceptUuids: Array<string>) {
 }
 
 export interface ImagingOrderPost extends OrderPost {
-  scheduledDate?: string;
+  // scheduledDate?: string;
   commentToFulfiller?: string;
   laterality?: string;
   bodySite?: string;
+  modality?:string;
 }
 
 export function prepImagingOrderPostData(
@@ -50,18 +51,18 @@ export function prepImagingOrderPostData(
   if (order.action === 'NEW' || order.action === 'RENEW') {
     payload = {
       action: 'NEW',
-      type: 'procedureorder',
+      type: 'radiologyOrder',
       patient: patientUuid,
       careSetting: careSettingUuid,
       orderer: order.orderer,
       encounter: encounterUuid,
       concept: order.testType.conceptUuid,
       instructions: order.instructions,
-      orderReason: order.orderReason,
-      orderReasonNonCoded: order.orderReasonNonCoded,
-      commentToFulfiller: order.commentsToFulfiller,
+      // orderReason: order.orderReason,
+      commentToFulfiller: order.commentToFulfiller,
       laterality: order.laterality,
       bodySite: order.bodySite,
+      modality: order.modality,
       urgency: order.urgency,
     };
     if (order.urgency === 'ON_SCHEDULED_DATE') {
@@ -71,18 +72,19 @@ export function prepImagingOrderPostData(
   } else if (order.action === 'REVISE') {
     payload = {
       action: 'REVISE',
-      type: 'procedureorder',
+      type: 'radiologyOrder',
+      previousOrder: order.previousOrder,
       patient: patientUuid,
       careSetting: order.careSetting,
       orderer: order.orderer,
       encounter: encounterUuid,
       concept: order.testType.conceptUuid,
       instructions: order.instructions,
-      orderReason: order.orderReason,
-      orderReasonNonCoded: order.orderReasonNonCoded,
-      commentToFulfiller: order.commentsToFulfiller,
+      // orderReason: order.orderReason,
+      commentToFulfiller: order.commentToFulfiller,
       laterality: order.laterality,
       bodySite: order.bodySite,
+      modality: order.modality,
     };
     if (order.urgency === 'ON_SCHEDULED_DATE') {
       payload['scheduledDate'] = order.scheduleDate instanceof Date ? order.scheduleDate.toISOString() : order.scheduleDate;
@@ -91,17 +93,18 @@ export function prepImagingOrderPostData(
   } else if (order.action === 'DISCONTINUE') {
     payload = {
       action: 'DISCONTINUE',
-      type: 'procedureorder',
+      type: 'radiologyOrder',
+      previousOrder: order.previousOrder,
       patient: patientUuid,
       careSetting: order.careSetting,
       orderer: order.orderer,
       encounter: encounterUuid,
       concept: order.testType.conceptUuid,
-      orderReason: order.orderReason,
-      orderReasonNonCoded: order.orderReasonNonCoded,
-      commentToFulfiller: order.commentsToFulfiller,
+      // orderReason: order.orderReason,
+      commentToFulfiller: order.commentToFulfiller,
       laterality: order.laterality,
       bodySite: order.bodySite,
+      modality: order.modality,
     };
     if (order.urgency === 'ON_SCHEDULED_DATE') {
       payload['scheduledDate'] = order.scheduleDate instanceof Date ? order.scheduleDate.toISOString() : order.scheduleDate;

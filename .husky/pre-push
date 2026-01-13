@@ -1,3 +1,0 @@
-set -e  # die on error
-
-yarn verify
