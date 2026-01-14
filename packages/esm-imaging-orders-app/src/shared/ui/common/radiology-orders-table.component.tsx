@@ -127,7 +127,12 @@ const RadiologyOrdersTable: React.FC<RadiologyOrdersTableProps> = ({
                 dateActivated: order.dateActivated,
                 orderNumber: order.orderNumber,
                 dateOfOrder: <div className={styles.singleLineText}>{formatDate(new Date(order.dateActivated))}</div>,
-                order: order.display,
+                order: (
+                    <>
+                        {order.action === 'REVISE' && <span style={{ fontWeight: 'bold' }}>{t('revise', '(REVISE)')} </span>}
+                        {order.display}
+                    </>
+                ),
                 priority: (
                     <div className={styles.priorityPill} data-priority={lowerCase(order.urgency)}>
                         {t(order.urgency, capitalize(order.urgency.replace('_', ' ')))}
