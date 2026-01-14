@@ -6,7 +6,7 @@
 .widgetCard {
   border: 1px solid colors.$gray-20;
 
-  > .desktop {
+  >.desktop {
     border-top: none !important;
   }
 }
@@ -137,7 +137,7 @@
 }
 
 .paginationContainer {
-  > div {
+  >div {
     border-top: none !important;
   }
 }
@@ -189,6 +189,7 @@
 }
 
 @media print {
+
   html,
   body {
     margin: 0 !important;
@@ -209,4 +210,11 @@
 .rangeLabel {
   @extend .helperText;
   margin-right: layout.$spacing-02;
+}
+
+.detailsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: layout.$spacing-05;
+  margin-bottom: layout.$spacing-05;
 }

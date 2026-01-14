@@ -25,6 +25,7 @@ import {
     TableRow,
     TableToolbarContent,
     Tile,
+    IconButton
 } from '@carbon/react';
 import {
     formatDate,
@@ -33,6 +34,7 @@ import {
     useConfig,
     showModal,
     launchWorkspace,
+    ViewIcon
 } from '@openmrs/esm-framework';
 import { CardHeader, EmptyState, ErrorState, PatientChartPagination, useOrderBasket } from '@openmrs/esm-patient-common-lib';
 import { AddIcon, PrinterIcon } from '@openmrs/esm-framework';
@@ -50,6 +52,11 @@ interface RadiologyOrdersTableProps {
     showPrintButton?: boolean;
     title?: string;
 }
+
+type RadiologyOrderDetailsProps = {
+    order: Result;
+    patientId: string;
+};
 
 interface DataTableRow {
     id: string;
@@ -342,7 +349,7 @@ const RadiologyOrdersTable: React.FC<RadiologyOrdersTableProps> = ({
                                                                                 {...getExpandedRowProps({
                                                                                     row,
                                                                                 })}>
-                                                                                {matchingOrder && <RadiologyOrderDetails order={matchingOrder} />}
+                                                                                {matchingOrder && <RadiologyOrderDetails patientId={patientUuid} order={matchingOrder} />}
                                                                             </TableExpandedRow>
                                                                         ) : (
                                                                             <TableExpandedRow className={styles.hiddenRow} colSpan={headers.length + 2} />
@@ -471,30 +478,42 @@ function OrderActions({
     );
 }
 
-function RadiologyOrderDetails({ order }: { order: Result }) {
+function RadiologyOrderDetails({ order, patientId }: RadiologyOrderDetailsProps) {
     const { t } = useTranslation();
 
     return (
         <div style={{ padding: '1rem' }}>
             <OrderDetail label={t('testOrdered', 'Test ordered')} value={capitalize(order.display || '--')} />
-            <OrderDetail
-                label={t('instructions', 'Instructions')}
-                value={capitalize(order.instructions) || t('noInstructions', 'No instructions provided')}
-            />
-            <OrderDetail
-                label={t('orderReason', 'Order reason')}
-                value={capitalize(order.orderReasonNonCoded || '--')}
-            />
-            <OrderDetail label={t('laterality', 'Laterality')} value={capitalize(order.laterality || '--')} />
-            <OrderDetail label={t('bodySite', 'Body site')} value={order.bodySite ? capitalize(order.bodySite.display || '--') : '--'} />
-            <OrderDetail
-                label={t('scheduledDate', 'Scheduled date')}
-                value={order.scheduledDate ? formatDate(new Date(order.scheduledDate)) : '--'}
-            />
-            <OrderDetail
-                label={t('fulfillerComment', 'Fulfiller comment')}
-                value={capitalize(order.fulfillerComment || '--')}
-            />
+            <div className={styles.detailsGrid}>
+                <OrderDetail
+                    label={t('instructions', 'Instructions')}
+                    value={capitalize(order.instructions) || t('noInstructions', 'No instructions provided')}
+                />
+                <OrderDetail
+                    label={t('orderReason', 'Order reason')}
+                    value={capitalize(order.orderReasonNonCoded || '--')}
+                />
+                <OrderDetail label={t('laterality', 'Laterality')} value={capitalize(order.laterality || '--')} />
+                <OrderDetail label={t('bodySite', 'Body site')} value={order.bodySite ? capitalize(order.bodySite.display || '--') : '--'} />
+                <OrderDetail
+                    label={t('scheduledDate', 'Scheduled date')}
+                    value={order.scheduledDate ? formatDate(new Date(order.scheduledDate)) : '--'}
+                />
+                <OrderDetail
+                    label={t('fulfillerComment', 'Fulfiller comment')}
+                    value={capitalize(order.fulfillerComment || '--')}
+                />
+            </div>
+            <IconButton
+                label="View Image"
+                align="right"
+                onClick={() => {
+                    window.open(`weasis://$dicom:rs --url "http://34.66.106.64:8080/dcm4chee-arc/aets/DCM4CHEE/rs" -r"patientID=${patientId}" --query-ext "&includedefaults=false`)
+                    }
+                }
+            >
+                <ViewIcon icon-color="white" />
+            </IconButton>
         </div>
     );
 }
