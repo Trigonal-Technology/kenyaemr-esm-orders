@@ -28,10 +28,12 @@ export function usePatientRadiologyOrders(
 
     // Build URL - use isStopped=false instead of status=ACTIVE when using orderTypes
     // because the API doesn't support both parameters together
+    // Build URL - Get all orders regardless of status to support history
+    // We will filter out superseded orders manually
     const baseUrl =
         startDate && endDate
-            ? `${restBaseUrl}/order?patient=${patientUuid}&orderTypes=${radiologyOrderTypeUuid}&v=${responseFormat}&activatedOnOrAfterDate=${startDate}&activatedOnOrBeforeDate=${endDate}&isStopped=false`
-            : `${restBaseUrl}/order?patient=${patientUuid}&orderTypes=${radiologyOrderTypeUuid}&v=${responseFormat}&isStopped=false`;
+            ? `${restBaseUrl}/order?patient=${patientUuid}&orderTypes=${radiologyOrderTypeUuid}&v=${responseFormat}&activatedOnOrAfterDate=${startDate}&activatedOnOrBeforeDate=${endDate}`
+            : `${restBaseUrl}/order?patient=${patientUuid}&orderTypes=${radiologyOrderTypeUuid}&v=${responseFormat}`;
 
     const { data, error, isLoading, mutate } = useSWR<{ data: { results: Array<Result> } }>(
         patientUuid ? baseUrl : null,
@@ -42,8 +44,20 @@ export function usePatientRadiologyOrders(
         if (!data?.data?.results) return [];
 
         // Filter to only radiology orders (by concept class)
+        // AND exclude superseded orders: action=NEW, stopped, and not declined/completed
         return data.data.results
-            .filter((order) => order.concept?.conceptClass?.uuid === radiologyConceptClassUuid)
+            .filter((order) => {
+                const isRadiology = order.concept?.conceptClass?.uuid === radiologyConceptClassUuid;
+
+                // User logic: exclude if action=NEW AND dateStopped!=null AND fulfillerStatus NOT IN (DECLINED, COMPLETED)
+                const isSuperseded =
+                    order.action === 'NEW' &&
+                    order.dateStopped !== null &&
+                    order.fulfillerStatus !== 'DECLINED' &&
+                    order.fulfillerStatus !== 'COMPLETED';
+
+                return isRadiology && !isSuperseded;
+            })
             .sort((a, b) => new Date(b.dateActivated).getTime() - new Date(a.dateActivated).getTime());
     }, [data, radiologyConceptClassUuid]);
 
