@@ -34,13 +34,14 @@ import {
     showModal,
     launchWorkspace,
 } from '@openmrs/esm-framework';
-import { CardHeader, EmptyState, ErrorState, PatientChartPagination } from '@openmrs/esm-patient-common-lib';
+import { CardHeader, EmptyState, ErrorState, PatientChartPagination, useOrderBasket } from '@openmrs/esm-patient-common-lib';
 import { AddIcon, PrinterIcon } from '@openmrs/esm-framework';
 import { useOrdersWorkList } from '../../../hooks/useOrdersWorklist';
 import { usePatientRadiologyOrders } from '../../../hooks/usePatientRadiologyOrders';
 import { type Result } from '../../../imaging-tabs/work-list/work-list.resource';
 import { type ImagingOrderBasketItem } from '../../../types';
 import { OrderDetail } from './order-detail.component';
+import { prepImagingOrderPostData } from '../../../form/imaging-orders/api';
 import styles from './radiology-orders-table.scss';
 
 interface RadiologyOrdersTableProps {
@@ -75,6 +76,9 @@ const RadiologyOrdersTable: React.FC<RadiologyOrdersTableProps> = ({
     const [isPrinting, setIsPrinting] = useState(false);
     const [selectedFromDate, setSelectedFromDate] = useState<string>(null);
     const [selectedToDate, setSelectedToDate] = useState<string>(null);
+
+    // Order basket for tracking order modifications
+    const { orders, setOrders } = useOrderBasket<ImagingOrderBasketItem>('imaging', prepImagingOrderPostData);
 
     // Fetch ALL radiology orders for this patient (including cancelled, in-progress, etc.)
     const {
@@ -318,7 +322,12 @@ const RadiologyOrdersTable: React.FC<RadiologyOrdersTableProps> = ({
                                                                             ))}
                                                                             {!isPrinting && matchingOrder && (
                                                                                 <TableCell className="cds--table-column-menu">
-                                                                                    <OrderActions orderItem={matchingOrder} responsiveSize={responsiveSize} />
+                                                                                    <OrderActions
+                                                                                        orderItem={matchingOrder}
+                                                                                        responsiveSize={responsiveSize}
+                                                                                        orders={orders}
+                                                                                        setOrders={setOrders}
+                                                                                    />
                                                                                 </TableCell>
                                                                             )}
                                                                         </TableExpandRow>
@@ -375,13 +384,25 @@ const RadiologyOrdersTable: React.FC<RadiologyOrdersTableProps> = ({
     );
 };
 
-function OrderActions({ orderItem, responsiveSize }: { orderItem: Result; responsiveSize: string }) {
+function OrderActions({
+    orderItem,
+    responsiveSize,
+    orders,
+    setOrders
+}: {
+    orderItem: Result;
+    responsiveSize: string;
+    orders: Array<ImagingOrderBasketItem>;
+    setOrders: (orders: Array<ImagingOrderBasketItem>) => void;
+}) {
     const { t } = useTranslation();
 
     const handleModifyClick = useCallback(() => {
         // Convert Result to ImagingOrderBasketItem format for workspace
         const imagingOrder: ImagingOrderBasketItem = {
-            action: 'RENEW',
+            action: 'REVISE', // Use REVISE to modify existing order, not create new one
+            uuid: orderItem.uuid, // Include the order UUID
+            previousOrder: orderItem.uuid, // Link to the order being revised
             display: orderItem.display,
             orderer: orderItem.orderer?.uuid,
             urgency: orderItem.urgency as any, // OrderUrgency type
@@ -401,11 +422,14 @@ function OrderActions({ orderItem, responsiveSize }: { orderItem: Result; respon
             commentToFulfiller: orderItem.commentToFulfiller,
         };
 
-        // Launch the imaging order workspace for editing
+        // Add order to basket FIRST (this is the key - matching drug order pattern)
+        setOrders([...orders, imagingOrder]);
+
+        // Then launch the imaging order workspace for editing
         launchWorkspace('add-imaging-order', {
             order: imagingOrder,
         });
-    }, [orderItem]);
+    }, [orderItem, orders, setOrders]);
 
     const handleCancelClick = useCallback(() => {
         // Show the reject order modal

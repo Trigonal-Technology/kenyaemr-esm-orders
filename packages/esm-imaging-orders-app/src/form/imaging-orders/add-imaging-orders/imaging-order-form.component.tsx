@@ -104,7 +104,15 @@ export function ImagingOrderForm({
 
   const handleFormSubmission = useCallback(
     (data: ImagingOrderBasketItem) => {
-      data.action = 'NEW';
+      // Preserve the action from initialOrder (REVISE, RENEW, etc.) instead of hardcoding to NEW
+      data.action = initialOrder?.action || 'NEW';
+      // Preserve previousOrder and uuid for REVISE/RENEW orders (required by API)
+      if (initialOrder?.previousOrder) {
+        data.previousOrder = initialOrder.previousOrder;
+      }
+      if (initialOrder?.uuid) {
+        data.uuid = initialOrder.uuid;
+      }
       data.careSetting = careSettingUuid;
       data.orderer = session.currentProvider.uuid;
       const newOrders = [...orders];
@@ -116,7 +124,7 @@ export function ImagingOrderForm({
         onWorkspaceClose: () => launchWorkspace('order-basket'),
       });
     },
-    [orders, setOrders, defaultValues, closeWorkspaceWithSavedChanges, session],
+    [orders, setOrders, defaultValues, closeWorkspaceWithSavedChanges, session, initialOrder],
   );
 
   const cancelOrder = useCallback(() => {
