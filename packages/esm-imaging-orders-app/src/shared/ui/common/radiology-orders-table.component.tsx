@@ -31,11 +31,15 @@ import {
     useLayoutType,
     usePagination,
     useConfig,
+    showModal,
+    launchWorkspace,
 } from '@openmrs/esm-framework';
 import { CardHeader, EmptyState, ErrorState, PatientChartPagination } from '@openmrs/esm-patient-common-lib';
 import { AddIcon, PrinterIcon } from '@openmrs/esm-framework';
 import { useOrdersWorkList } from '../../../hooks/useOrdersWorklist';
+import { usePatientRadiologyOrders } from '../../../hooks/usePatientRadiologyOrders';
 import { type Result } from '../../../imaging-tabs/work-list/work-list.resource';
+import { type ImagingOrderBasketItem } from '../../../types';
 import { OrderDetail } from './order-detail.component';
 import styles from './radiology-orders-table.scss';
 
@@ -72,18 +76,12 @@ const RadiologyOrdersTable: React.FC<RadiologyOrdersTableProps> = ({
     const [selectedFromDate, setSelectedFromDate] = useState<string>(null);
     const [selectedToDate, setSelectedToDate] = useState<string>(null);
 
-    // Fetch radiology orders for this patient
+    // Fetch ALL radiology orders for this patient (including cancelled, in-progress, etc.)
     const {
-        workListEntries: allOrders,
-        isError: error,
+        data: patientOrders,
+        error,
         isLoading,
-    } = useOrdersWorkList(selectedFromDate || new Date().toISOString(), '');
-
-    // Filter orders to only those for this patient
-    const patientOrders = useMemo(
-        () => allOrders?.filter((order) => order.patient?.uuid === patientUuid) ?? [],
-        [allOrders, patientUuid],
-    );
+    } = usePatientRadiologyOrders(patientUuid, 'ACTIVE', selectedFromDate, selectedToDate);
 
     const tableHeaders = [
         {
@@ -187,8 +185,8 @@ const RadiologyOrdersTable: React.FC<RadiologyOrdersTableProps> = ({
     };
 
     const handleAddOrderClick = useCallback(() => {
-        // TODO: Launch imaging order workspace
-        console.log('Add radiology order clicked');
+        // Launch the imaging order workspace for creating a new order
+        launchWorkspace('add-imaging-order');
     }, []);
 
     return (
@@ -381,13 +379,40 @@ function OrderActions({ orderItem, responsiveSize }: { orderItem: Result; respon
     const { t } = useTranslation();
 
     const handleModifyClick = useCallback(() => {
-        // TODO: Launch modify radiology order workspace
-        console.log('Modify order:', orderItem);
+        // Convert Result to ImagingOrderBasketItem format for workspace
+        const imagingOrder: ImagingOrderBasketItem = {
+            action: 'RENEW',
+            display: orderItem.display,
+            orderer: orderItem.orderer?.uuid,
+            urgency: orderItem.urgency as any, // OrderUrgency type
+            careSetting: orderItem.careSetting?.uuid,
+            orderType: orderItem.orderType?.uuid,
+            concept: orderItem.concept as any, // Full concept object
+            testType: {
+                label: orderItem.concept?.display,
+                conceptUuid: orderItem.concept?.uuid,
+            },
+            instructions: orderItem.instructions,
+            orderReason: orderItem.orderReason?.uuid,
+            orderReasonNonCoded: orderItem.orderReasonNonCoded,
+            laterality: orderItem.laterality,
+            bodySite: orderItem.bodySite?.display || '',
+            scheduledDate: orderItem.scheduledDate ? new Date(orderItem.scheduledDate) : undefined,
+            commentToFulfiller: orderItem.commentToFulfiller,
+        };
+
+        // Launch the imaging order workspace for editing
+        launchWorkspace('add-imaging-order', {
+            order: imagingOrder,
+        });
     }, [orderItem]);
 
     const handleCancelClick = useCallback(() => {
-        // TODO: Launch cancel/discontinue order workspace
-        console.log('Cancel order:', orderItem);
+        // Show the reject order modal
+        const dispose = showModal('reject-imaging-order-modal', {
+            closeModal: () => dispose(),
+            order: orderItem,
+        });
     }, [orderItem]);
 
     return (
