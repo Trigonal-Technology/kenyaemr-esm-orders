@@ -8,12 +8,23 @@
     {
       "component": "imagingOrdersLink",
       "name": "radiology-dashboard-link",
-      "slot":"homepage-dashboard-slot",
+      "slot": "homepage-dashboard-slot",
       "meta": {
         "name": "imaging-orders",
         "title": "imaging-orders",
         "slot": "imaging-dashboard-slot"
       }
+    },
+    {
+      "name": "patient-radiology-orders-summary-dashboard",
+      "component": "radiologyordersDashboardLink",
+      "slot": "patient-chart-dashboard-slot",
+      "meta": {
+        "slot": "patient-chart-radiology-orders-dashboard-slot",
+        "path": "radiologyOrders",
+        "hideDashboardTitle": true
+      },
+      "order": 4
     },
     {
       "component": "root",
@@ -35,6 +46,14 @@
       "name": "imaging-results-component",
       "component": "imagingResultsComponent",
       "slot": "ewf-radiology-and-imaging-results-slot"
+    },
+    {
+      "name": "patient-radiology-orders-dashboard",
+      "component": "radiologyOrdersSummary",
+      "slot": "patient-chart-radiology-orders-dashboard-slot",
+      "meta": {
+        "fullWidth": false
+      }
     }
   ],
   "workspaces": [

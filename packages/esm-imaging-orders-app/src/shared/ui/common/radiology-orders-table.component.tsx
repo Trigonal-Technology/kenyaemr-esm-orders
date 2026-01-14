@@ -1,0 +1,448 @@
+import React, { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { capitalize, lowerCase } from 'lodash-es';
+import { useTranslation } from 'react-i18next';
+import { useReactToPrint } from 'react-to-print';
+import {
+    Button,
+    DataTable,
+    DataTableSkeleton,
+    DatePicker,
+    DatePickerInput,
+    InlineLoading,
+    Layer,
+    OverflowMenu,
+    OverflowMenuItem,
+    Search,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableExpandedRow,
+    TableExpandHeader,
+    TableExpandRow,
+    TableHead,
+    TableHeader,
+    TableRow,
+    TableToolbarContent,
+    Tile,
+} from '@carbon/react';
+import {
+    formatDate,
+    useLayoutType,
+    usePagination,
+    useConfig,
+} from '@openmrs/esm-framework';
+import { CardHeader, EmptyState, ErrorState, PatientChartPagination } from '@openmrs/esm-patient-common-lib';
+import { AddIcon, PrinterIcon } from '@openmrs/esm-framework';
+import { useOrdersWorkList } from '../../../hooks/useOrdersWorklist';
+import { type Result } from '../../../imaging-tabs/work-list/work-list.resource';
+import { OrderDetail } from './order-detail.component';
+import styles from './radiology-orders-table.scss';
+
+interface RadiologyOrdersTableProps {
+    patientUuid: string;
+    showAddButton?: boolean;
+    showPrintButton?: boolean;
+    title?: string;
+}
+
+interface DataTableRow {
+    id: string;
+    cells: Array<{
+        id: number;
+        info: { header: string };
+        value: ReactNode | { props: { orderItem: Result }; content: string };
+    }>;
+    isExpanded: boolean;
+}
+
+const RadiologyOrdersTable: React.FC<RadiologyOrdersTableProps> = ({
+    patientUuid,
+    showAddButton,
+    showPrintButton,
+    title,
+}) => {
+    const { t } = useTranslation();
+    const defaultPageSize = 10;
+    const headerTitle = t('radiologyOrders', 'Radiology Orders');
+    const isTablet = useLayoutType() === 'tablet';
+    const responsiveSize = isTablet ? 'lg' : 'md';
+    const contentToPrintRef = useRef(null);
+    const [isPrinting, setIsPrinting] = useState(false);
+    const [selectedFromDate, setSelectedFromDate] = useState<string>(null);
+    const [selectedToDate, setSelectedToDate] = useState<string>(null);
+
+    // Fetch radiology orders for this patient
+    const {
+        workListEntries: allOrders,
+        isError: error,
+        isLoading,
+    } = useOrdersWorkList(selectedFromDate || new Date().toISOString(), '');
+
+    // Filter orders to only those for this patient
+    const patientOrders = useMemo(
+        () => allOrders?.filter((order) => order.patient?.uuid === patientUuid) ?? [],
+        [allOrders, patientUuid],
+    );
+
+    const tableHeaders = [
+        {
+            key: 'orderNumber',
+            header: t('orderNumber', 'Order number'),
+            isSortable: true,
+        },
+        {
+            key: 'dateOfOrder',
+            header: t('dateOfOrder', 'Date of order'),
+            isSortable: true,
+        },
+        {
+            key: 'order',
+            header: t('order', 'Order'),
+            isSortable: true,
+        },
+        {
+            key: 'priority',
+            header: t('priority', 'Priority'),
+            isSortable: true,
+        },
+        {
+            key: 'orderedBy',
+            header: t('orderedBy', 'Ordered by'),
+            isSortable: false,
+        },
+        {
+            key: 'status',
+            header: t('status', 'Status'),
+            isSortable: true,
+        },
+    ];
+
+    const tableRows = useMemo(
+        () =>
+            patientOrders?.map((order) => ({
+                id: order.uuid,
+                dateActivated: order.dateActivated,
+                orderNumber: order.orderNumber,
+                dateOfOrder: <div className={styles.singleLineText}>{formatDate(new Date(order.dateActivated))}</div>,
+                order: order.display,
+                priority: (
+                    <div className={styles.priorityPill} data-priority={lowerCase(order.urgency)}>
+                        {t(order.urgency, capitalize(order.urgency.replace('_', ' ')))}
+                    </div>
+                ),
+                orderedBy: order.orderer?.display,
+                status: order.fulfillerStatus ? (
+                    <div className={styles.statusPill} data-status={lowerCase(order.fulfillerStatus.replace('_', ' '))}>
+                        {t(order.fulfillerStatus, capitalize(order.fulfillerStatus.replace('_', ' ')))}
+                    </div>
+                ) : (
+                    '--'
+                ),
+            })) ?? [],
+        [patientOrders, t],
+    );
+
+    const { results: paginatedOrders, goTo, currentPage } = usePagination(tableRows, defaultPageSize);
+
+    const onBeforeGetContentResolve = useRef(null);
+
+    useEffect(() => {
+        if (isPrinting && onBeforeGetContentResolve.current) {
+            onBeforeGetContentResolve.current();
+        }
+    }, [isPrinting]);
+
+    const handlePrint = useReactToPrint({
+        content: () => contentToPrintRef.current,
+        documentTitle: `Radiology Orders - ${title} `,
+        onBeforeGetContent: () =>
+            new Promise((resolve) => {
+                if (title) {
+                    onBeforeGetContentResolve.current = resolve;
+                    setIsPrinting(true);
+                }
+            }),
+        onAfterPrint: () => {
+            onBeforeGetContentResolve.current = null;
+            setIsPrinting(false);
+        },
+    });
+
+    const handleDateFilterChange = ([startDate, endDate]) => {
+        if (startDate) {
+            const isoStartDate = startDate.toISOString();
+            setSelectedFromDate(isoStartDate);
+            if (selectedToDate && selectedToDate < startDate) {
+                setSelectedToDate(isoStartDate);
+            }
+        }
+        if (endDate) {
+            const isoEndDate = endDate.toISOString();
+            setSelectedToDate(isoEndDate);
+            if (selectedFromDate && selectedFromDate > endDate) {
+                setSelectedFromDate(isoEndDate);
+            }
+        }
+    };
+
+    const handleAddOrderClick = useCallback(() => {
+        // TODO: Launch imaging order workspace
+        console.log('Add radiology order clicked');
+    }, []);
+
+    return (
+        <>
+            <div className={styles.filterContainer}>
+                <span className={styles.rangeLabel}>{t('dateRange', 'Date range')}:</span>
+                <DatePicker
+                    datePickerType="range"
+                    dateFormat={'d/m/Y'}
+                    value={''}
+                    onChange={([startDate, endDate]) => {
+                        handleDateFilterChange([startDate, endDate]);
+                    }}>
+                    <DatePickerInput
+                        id="startDatePickerInput"
+                        data-testid="startDatePickerInput"
+                        labelText=""
+                        placeholder="dd/mm/yyyy"
+                    />
+                    <DatePickerInput
+                        id="endDatePickerInput"
+                        data-testid="endDatePickerInput"
+                        labelText=""
+                        placeholder="dd/mm/yyyy"
+                    />
+                </DatePicker>
+            </div>
+
+            {(() => {
+                if (isLoading) {
+                    return <DataTableSkeleton role="progressbar" compact={!isTablet} zebra />;
+                }
+
+                if (error) {
+                    return <ErrorState error={error} headerTitle={title} />;
+                }
+
+                return (
+                    <>
+                        {!tableRows?.length ? (
+                            <EmptyState headerTitle={headerTitle} displayText={t('radiologyOrders', 'Radiology Orders')} />
+                        ) : (
+                            <div className={styles.widgetCard}>
+                                <CardHeader title={title}>
+                                    <div className={styles.buttons}>
+                                        {showPrintButton && (
+                                            <Button
+                                                className={styles.printButton}
+                                                iconDescription={t('printOrder', 'Print order')}
+                                                kind="ghost"
+                                                onClick={handlePrint}
+                                                renderIcon={PrinterIcon}>
+                                                {t('print', 'Print')}
+                                            </Button>
+                                        )}
+                                        {showAddButton && (
+                                            <Button
+                                                className={styles.addButton}
+                                                kind="ghost"
+                                                renderIcon={AddIcon}
+                                                iconDescription={t('addRadiologyOrder', 'Add radiology order')}
+                                                onClick={handleAddOrderClick}>
+                                                {t('add', 'Add')}
+                                            </Button>
+                                        )}
+                                    </div>
+                                </CardHeader>
+                                <div ref={contentToPrintRef}>
+                                    <DataTable
+                                        aria-label={t('radiologyOrderDetails', 'Radiology order details')}
+                                        data-floating-menu-container
+                                        headers={tableHeaders}
+                                        isSortable
+                                        overflowMenuOnHover={!isTablet}
+                                        rows={paginatedOrders}
+                                        size={responsiveSize}
+                                        useZebraStyles>
+                                        {({
+                                            getExpandedRowProps,
+                                            getExpandHeaderProps,
+                                            getHeaderProps,
+                                            getRowProps,
+                                            getTableContainerProps,
+                                            getTableProps,
+                                            headers,
+                                            onInputChange,
+                                            rows,
+                                        }) => (
+                                            <>
+                                                <TableContainer {...getTableContainerProps}>
+                                                    {!isPrinting && (
+                                                        <div className={styles.toolBarContent}>
+                                                            <TableToolbarContent>
+                                                                <Layer>
+                                                                    <Search
+                                                                        expanded
+                                                                        labelText=""
+                                                                        onChange={onInputChange}
+                                                                        placeholder={t('searchTable', 'Search table')}
+                                                                        size="lg"
+                                                                    />
+                                                                </Layer>
+                                                            </TableToolbarContent>
+                                                        </div>
+                                                    )}
+                                                    <Table className={styles.table} {...getTableProps()}>
+                                                        <TableHead>
+                                                            <TableRow>
+                                                                <TableExpandHeader enableToggle {...getExpandHeaderProps()} />
+                                                                {headers.map((header: { header: string }) => (
+                                                                    <TableHeader key={header.header} {...getHeaderProps({ header })}>
+                                                                        {header.header}
+                                                                    </TableHeader>
+                                                                ))}
+                                                                <TableExpandHeader />
+                                                            </TableRow>
+                                                        </TableHead>
+                                                        <TableBody>
+                                                            {rows.map((row: DataTableRow) => {
+                                                                const matchingOrder = patientOrders?.find((order) => order.uuid === row.id);
+
+                                                                return (
+                                                                    <React.Fragment key={row.id}>
+                                                                        <TableExpandRow className={styles.row} {...getRowProps({ row })}>
+                                                                            {row.cells.map((cell) => (
+                                                                                <TableCell className={styles.tableCell} key={cell.id}>
+                                                                                    {cell.value?.['content'] ?? cell.value}
+                                                                                </TableCell>
+                                                                            ))}
+                                                                            {!isPrinting && matchingOrder && (
+                                                                                <TableCell className="cds--table-column-menu">
+                                                                                    <OrderActions orderItem={matchingOrder} responsiveSize={responsiveSize} />
+                                                                                </TableCell>
+                                                                            )}
+                                                                        </TableExpandRow>
+                                                                        {row.isExpanded ? (
+                                                                            <TableExpandedRow
+                                                                                colSpan={headers.length + 2}
+                                                                                {...getExpandedRowProps({
+                                                                                    row,
+                                                                                })}>
+                                                                                {matchingOrder && <RadiologyOrderDetails order={matchingOrder} />}
+                                                                            </TableExpandedRow>
+                                                                        ) : (
+                                                                            <TableExpandedRow className={styles.hiddenRow} colSpan={headers.length + 2} />
+                                                                        )}
+                                                                    </React.Fragment>
+                                                                );
+                                                            })}
+                                                        </TableBody>
+                                                    </Table>
+                                                </TableContainer>
+                                                {rows.length === 0 ? (
+                                                    <div className={styles.tileContainer}>
+                                                        <Tile className={styles.emptyStateTile}>
+                                                            <div className={styles.tileContent}>
+                                                                <p className={styles.content}>
+                                                                    {t('noMatchingOrdersToDisplay', 'No matching orders to display')}
+                                                                </p>
+                                                                <p className={styles.helperText}>{t('checkFilters', 'Check the filters above')}</p>
+                                                            </div>
+                                                        </Tile>
+                                                    </div>
+                                                ) : null}
+                                            </>
+                                        )}
+                                    </DataTable>
+                                    {!isPrinting && (
+                                        <div className={styles.paginationContainer}>
+                                            <PatientChartPagination
+                                                pageNumber={currentPage}
+                                                totalItems={tableRows.length}
+                                                currentItems={paginatedOrders.length}
+                                                pageSize={defaultPageSize}
+                                                onPageNumberChange={({ page }) => goTo(page)}
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </>
+                );
+            })()}
+        </>
+    );
+};
+
+function OrderActions({ orderItem, responsiveSize }: { orderItem: Result; responsiveSize: string }) {
+    const { t } = useTranslation();
+
+    const handleModifyClick = useCallback(() => {
+        // TODO: Launch modify radiology order workspace
+        console.log('Modify order:', orderItem);
+    }, [orderItem]);
+
+    const handleCancelClick = useCallback(() => {
+        // TODO: Launch cancel/discontinue order workspace
+        console.log('Cancel order:', orderItem);
+    }, [orderItem]);
+
+    return (
+        <Layer className={styles.layer}>
+            <OverflowMenu
+                align="left"
+                aria-label={t('actionsMenu', 'Actions menu')}
+                flipped
+                selectorPrimaryFocus={'#modify'}
+                size={responsiveSize}>
+                <OverflowMenuItem
+                    className={styles.menuItem}
+                    id="modify"
+                    itemText={t('modifyOrder', 'Modify order')}
+                    onClick={handleModifyClick}
+                />
+                <OverflowMenuItem
+                    className={styles.menuItem}
+                    hasDivider
+                    id="discontinue"
+                    isDelete
+                    itemText={t('cancelOrder', 'Cancel order')}
+                    onClick={handleCancelClick}
+                />
+            </OverflowMenu>
+        </Layer>
+    );
+}
+
+function RadiologyOrderDetails({ order }: { order: Result }) {
+    const { t } = useTranslation();
+
+    return (
+        <div style={{ padding: '1rem' }}>
+            <OrderDetail label={t('testOrdered', 'Test ordered')} value={capitalize(order.display || '--')} />
+            <OrderDetail
+                label={t('instructions', 'Instructions')}
+                value={capitalize(order.instructions) || t('noInstructions', 'No instructions provided')}
+            />
+            <OrderDetail
+                label={t('orderReason', 'Order reason')}
+                value={capitalize(order.orderReasonNonCoded || '--')}
+            />
+            <OrderDetail label={t('laterality', 'Laterality')} value={capitalize(order.laterality || '--')} />
+            <OrderDetail label={t('bodySite', 'Body site')} value={order.bodySite ? capitalize(order.bodySite.display || '--') : '--'} />
+            <OrderDetail
+                label={t('scheduledDate', 'Scheduled date')}
+                value={order.scheduledDate ? formatDate(new Date(order.scheduledDate)) : '--'}
+            />
+            <OrderDetail
+                label={t('fulfillerComment', 'Fulfiller comment')}
+                value={capitalize(order.fulfillerComment || '--')}
+            />
+        </div>
+    );
+}
+
+export default RadiologyOrdersTable;

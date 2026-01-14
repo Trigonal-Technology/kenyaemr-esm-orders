@@ -14,6 +14,9 @@ import ImagingReviewForm from './form/review-form/review-imaging-form.workspace'
 import PrintPreviewModal from './print/print-report-modal.component';
 import SearchPatientWorkspace from './form/imaging-orders/search-patient.workspace';
 import ImagingOrders from './imaging-orders.component';
+import { radiologyordersDashboardMeta } from './dashboard-meta';
+import { createDashboardLink } from '@openmrs/esm-patient-common-lib';
+import RadiologyOrdersSummary from './shared/ui/common/radiology-orders-summary.component';
 
 const options = {
   featureName: 'esm-imaging-orders-app',
@@ -38,6 +41,14 @@ export const imagingOrdersLink = getSyncLifecycle(
   options,
 );
 
+export const radiologyordersDashboardLink =
+  getSyncLifecycle(
+    createDashboardLink({
+      ...radiologyordersDashboardMeta,
+    }),
+    options,
+  );
+
 // Modals
 
 export const imagingOrderPanel = getSyncLifecycle(ImagingOrderBasketPanelExtension, options);
@@ -53,3 +64,9 @@ export const imagingReviewForm = getSyncLifecycle(ImagingReviewForm, options);
 export const addImagingToWorkListModal = getSyncLifecycle(AddImagingToWorkListModal, options);
 export const amendModal = getSyncLifecycle(AmendModal, options);
 export const imagingResultsComponent = getAsyncLifecycle(() => import('./imaging-results/imaging-results.component'), options);
+
+// Radiology Orders Summary
+export const radiologyOrdersSummary = getSyncLifecycle(RadiologyOrdersSummary, options);
+
+
+
