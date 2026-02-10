@@ -1,25 +1,68 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { type ComponentProps, useCallback, useEffect, useMemo, useState } from 'react';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { Button, Tile } from '@carbon/react';
-import { Add, ChevronDown, ChevronUp } from '@carbon/react/icons';
-import { useLayoutType, closeWorkspace, launchWorkspace } from '@openmrs/esm-framework';
-import { type OrderBasketItem, useOrderBasket } from '@openmrs/esm-patient-common-lib';
-import { prepMedicalSupplyOrderPostData } from '../api';
-import styles from './medical-supply-order-basket-panel.scss';
-import { type MedicalSupplyOrderBasketItem } from '../../../types';
-import ImagingIcon from './medical-supply-icon.component';
+import { AddIcon, ChevronDownIcon, ChevronUpIcon, useLayoutType, useConfig, MaybeIcon, launchWorkspace2 } from '@openmrs/esm-framework';
+import {
+  useOrderBasket,
+  useOrderType,
+  type OrderBasketExtensionProps,
+} from '@openmrs/esm-patient-common-lib';
+import type { MedicalSupplyOrderBasketItem } from '../../../types';
+import type { MedicalSupplyConfig } from '../../../config-schema';
 import { MedicalSupplyOrderBasketItemTile } from './medical-supply-order-basket-item-tile.component';
+import { createPrepMedicalSupplyPostData } from '../api';
+import MedicalSupplyIcon from './medical-supply-icon.component';
+import styles from './medical-supply-order-basket-panel.scss';
 
-/**
- * Designs: https://app.zeplin.io/project/60d59321e8100b0324762e05/screen/648c44d9d4052c613e7f23da
- */
-export default function MedicalSupplyOrderBasketPanelExtension() {
+export function MedicalSupplBasketPanelExtension({ patient }: OrderBasketExtensionProps) {
+  const { orders } = useConfig<MedicalSupplyConfig>();
+  const { t } = useTranslation();
+
+  const launchMedicalSupplyForm = useCallback((orderTypeUuid: string, order?: MedicalSupplyOrderBasketItem) => {
+    launchWorkspace2('add-medical-supply-order', { orderTypeUuid, order }, null, null);
+  }, []);
+
+  const allOrderTypes: any = [
+    {
+      label: t('medicalSupplyOrders', 'Medical supply orders'),
+      orderTypeUuid: orders.medicalSupplyOrderTypeUuid,
+      icon: 'omrs-icon-lab-order',
+    },
+  ];
+
+  return (
+    <>
+      {allOrderTypes.map((orderTypeConfig) => (
+        <MedicalSupplyBasketPanel
+          key={orderTypeConfig.orderTypeUuid}
+          patient={patient}
+          {...orderTypeConfig}
+          launchMedicalSupplyForm={launchMedicalSupplyForm}
+        />
+      ))}
+    </>
+  );
+}
+
+type OrderTypeConfig = any;
+
+interface MedicalSupplyBasketPanelProps extends OrderTypeConfig {
+  patient: fhir.Patient;
+  launchMedicalSupplyForm(orderTypeUuid: string, order?: MedicalSupplyOrderBasketItem): void;
+}
+
+function MedicalSupplyBasketPanel({ orderTypeUuid, label, icon, patient, launchMedicalSupplyForm }: MedicalSupplyBasketPanelProps) {
   const { t } = useTranslation();
   const isTablet = useLayoutType() === 'tablet';
+  const responsiveSize = isTablet ? 'md' : 'sm';
+  const isDefaultLabOrder = icon === 'omrs-icon-lab-order';
+  const { orderType, isLoadingOrderType } = useOrderType(orderTypeUuid);
+  const { orders: configOrders, careSettingUuid } = useConfig<MedicalSupplyConfig>();
   const { orders, setOrders } = useOrderBasket<MedicalSupplyOrderBasketItem>(
-    'medicalsupply',
-    prepMedicalSupplyOrderPostData,
+    patient,
+    orderTypeUuid,
+    createPrepMedicalSupplyPostData(configOrders.medicalSupplyOrderTypeUuid, careSettingUuid),
   );
   const [isExpanded, setIsExpanded] = useState(orders.length > 0);
   const {
@@ -35,7 +78,8 @@ export default function MedicalSupplyOrderBasketPanelExtension() {
     const revisedOrderBasketItems: Array<MedicalSupplyOrderBasketItem> = [];
     const discontinuedOrderBasketItems: Array<MedicalSupplyOrderBasketItem> = [];
 
-    orders.forEach((order) => {
+    // Filter out any undefined or null orders to prevent errors
+    orders.filter(Boolean).forEach((order) => {
       if (order?.isOrderIncomplete) {
         incompleteOrderBasketItems.push(order);
       } else if (order.action === 'NEW') {
@@ -58,21 +102,7 @@ export default function MedicalSupplyOrderBasketPanelExtension() {
     };
   }, [orders]);
 
-  const openNewMedicalSupplyForm = useCallback(() => {
-    closeWorkspace('order-basket', {
-      ignoreChanges: true,
-      onWorkspaceClose: () => launchWorkspace('add-medical-supply-order'),
-    });
-  }, []);
-
-  const openEditMedicalSupplyForm = useCallback((order: OrderBasketItem) => {
-    closeWorkspace('order-basket', {
-      ignoreChanges: true,
-      onWorkspaceClose: () => launchWorkspace('add-medical-supply-order', { order }),
-    });
-  }, []);
-
-  const removeMedicalSupplyOrder = useCallback(
+  const removeLabOrder = useCallback(
     (order: MedicalSupplyOrderBasketItem) => {
       const newOrders = [...orders];
       newOrders.splice(orders.indexOf(order), 1);
@@ -87,35 +117,42 @@ export default function MedicalSupplyOrderBasketPanelExtension() {
 
   return (
     <Tile
-      className={classNames(isTablet ? styles.tabletTile : styles.desktopTile, {
+      className={classNames(styles.tile, isTablet ? styles.tabletTile : styles.desktopTile, {
         [styles.collapsedTile]: !isExpanded,
-      })}>
-      <div className={styles.container}>
+      })}
+    >
+      <div className={classNames(isTablet ? styles.tabletContainer : styles.desktopContainer)}>
         <div className={styles.iconAndLabel}>
-          <ImagingIcon isTablet={isTablet} />
-          <h4 className={styles.heading}>{`${t('medicalSupplyOrders', 'Medical supply orders')} (${
-            orders.length
-          })`}</h4>
+          {isDefaultLabOrder ? (
+            <MedicalSupplyIcon isTablet={isTablet} />
+          ) : (
+            <MaybeIcon icon={icon ? icon : 'omrs-icon-generic-order-type'} size={isTablet ? 40 : 24} />
+          )}
+          <h4 className={styles.heading}>{`${label ? t(label) : orderType?.display} (${orders.length})`}</h4>
         </div>
         <div className={styles.buttonContainer}>
           <Button
+            className={styles.addButton}
+            iconDescription="Add Medical Supply"
             kind="ghost"
-            renderIcon={(props) => <Add size={16} {...props} />}
-            iconDescription="Add medical supply order"
-            onClick={openNewMedicalSupplyForm}
-            size={isTablet ? 'md' : 'sm'}>
+            onClick={() => launchMedicalSupplyForm(orderTypeUuid)}
+            renderIcon={(props: ComponentProps<typeof AddIcon>) => <AddIcon size={16} {...props} />}
+            size={responsiveSize}
+          >
             {t('add', 'Add')}
           </Button>
           <Button
             className={styles.chevron}
-            hasIconOnly
-            kind="ghost"
-            renderIcon={(props) =>
-              isExpanded ? <ChevronUp size={16} {...props} /> : <ChevronDown size={16} {...props} />
-            }
-            iconDescription="View"
             disabled={orders.length === 0}
-            onClick={() => setIsExpanded(!isExpanded)}>
+            hasIconOnly
+            iconDescription="View"
+            kind="ghost"
+            onClick={() => setIsExpanded(!isExpanded)}
+            renderIcon={(props: ComponentProps<typeof ChevronUpIcon>) =>
+              isExpanded ? <ChevronUpIcon size={16} {...props} /> : <ChevronDownIcon size={16} {...props} />
+            }
+            size={responsiveSize}
+          >
             {t('add', 'Add')}
           </Button>
         </div>
@@ -129,9 +166,9 @@ export default function MedicalSupplyOrderBasketPanelExtension() {
                   {incompleteOrderBasketItems.map((order) => (
                     <MedicalSupplyOrderBasketItemTile
                       key={order.uuid}
+                      onItemClick={() => launchMedicalSupplyForm(orderTypeUuid, order)}
+                      onRemoveClick={() => removeLabOrder(order)}
                       orderBasketItem={order}
-                      onItemClick={() => openEditMedicalSupplyForm(order)}
-                      onRemoveClick={() => removeMedicalSupplyOrder(order)}
                     />
                   ))}
                 </>
@@ -141,9 +178,9 @@ export default function MedicalSupplyOrderBasketPanelExtension() {
                   {newOrderBasketItems.map((order) => (
                     <MedicalSupplyOrderBasketItemTile
                       key={order.uuid}
+                      onItemClick={() => launchMedicalSupplyForm(orderTypeUuid, order)}
+                      onRemoveClick={() => removeLabOrder(order)}
                       orderBasketItem={order}
-                      onItemClick={() => openEditMedicalSupplyForm(order)}
-                      onRemoveClick={() => removeMedicalSupplyOrder(order)}
                     />
                   ))}
                 </>
@@ -154,9 +191,9 @@ export default function MedicalSupplyOrderBasketPanelExtension() {
                   {renewedOrderBasketItems.map((order) => (
                     <MedicalSupplyOrderBasketItemTile
                       key={order.uuid}
+                      onItemClick={() => launchMedicalSupplyForm(orderTypeUuid, order)}
+                      onRemoveClick={() => removeLabOrder(order)}
                       orderBasketItem={order}
-                      onItemClick={() => openEditMedicalSupplyForm(order)}
-                      onRemoveClick={() => removeMedicalSupplyOrder(order)}
                     />
                   ))}
                 </>
@@ -167,9 +204,9 @@ export default function MedicalSupplyOrderBasketPanelExtension() {
                   {revisedOrderBasketItems.map((order) => (
                     <MedicalSupplyOrderBasketItemTile
                       key={order.uuid}
+                      onItemClick={() => launchMedicalSupplyForm(orderTypeUuid, order)}
+                      onRemoveClick={() => removeLabOrder(order)}
                       orderBasketItem={order}
-                      onItemClick={() => openEditMedicalSupplyForm(order)}
-                      onRemoveClick={() => removeMedicalSupplyOrder(order)}
                     />
                   ))}
                 </>
@@ -180,9 +217,9 @@ export default function MedicalSupplyOrderBasketPanelExtension() {
                   {discontinuedOrderBasketItems.map((order) => (
                     <MedicalSupplyOrderBasketItemTile
                       key={order.uuid}
+                      onItemClick={() => launchMedicalSupplyForm(orderTypeUuid, order)}
+                      onRemoveClick={() => removeLabOrder(order)}
                       orderBasketItem={order}
-                      onItemClick={() => openEditMedicalSupplyForm(order)}
-                      onRemoveClick={() => removeMedicalSupplyOrder(order)}
                     />
                   ))}
                 </>
@@ -194,3 +231,6 @@ export default function MedicalSupplyOrderBasketPanelExtension() {
     </Tile>
   );
 }
+
+export default MedicalSupplBasketPanelExtension;
+

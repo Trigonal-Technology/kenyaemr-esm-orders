@@ -18,5 +18,6 @@ export function createEmptyMedicalSupplyOrder(
     display: testType.label,
     testType,
     orderer,
+    visit: undefined
   };
 }

@@ -1,10 +1,10 @@
 import React from 'react';
 
-interface ImagingProps {
+interface MedicalSupplyProps {
   isTablet: boolean;
 }
 
-export default function ImagingIcon({ isTablet }: ImagingProps) {
+export default function MedicalSupplyIcon({ isTablet }: MedicalSupplyProps) {
   const size = isTablet ? 40 : 24;
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">

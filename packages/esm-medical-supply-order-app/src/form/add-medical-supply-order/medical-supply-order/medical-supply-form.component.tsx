@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import classNames from 'classnames';
-import { type DefaultPatientWorkspaceProps, useOrderBasket } from '@openmrs/esm-patient-common-lib';
-import { translateFrom, useLayoutType, useSession, useConfig, ExtensionSlot, launchWorkspace } from '@openmrs/esm-framework';
+import { useOrderBasket } from '@openmrs/esm-patient-common-lib';
+import { translateFrom, useLayoutType, useSession, useConfig, ExtensionSlot, launchWorkspace, Workspace2DefinitionProps } from '@openmrs/esm-framework';
 import {
   Button,
   ButtonSet,
@@ -24,14 +24,16 @@ import { type MedicalSupplyConfig } from '../../../config-schema';
 import styles from './medical-supply-form.scss';
 import { type MedicalSupplyOrderBasketItem } from '../../../types';
 import { priorityOptions } from './medical-supply-order';
-import { careSettingUuid, prepMedicalSupplyOrderPostData } from '../api';
+import { careSettingUuid, createPrepMedicalSupplyPostData } from '../api';
 import { useQuantityUnits } from '../../../hooks/useMedicalSupplyTypes';
 
 export interface MedicalSupplyOrderFormProps {
+  closeWorkspace: Workspace2DefinitionProps['closeWorkspace'];
   initialOrder: MedicalSupplyOrderBasketItem;
-  closeWorkspace: DefaultPatientWorkspaceProps['closeWorkspace'];
-  closeWorkspaceWithSavedChanges: DefaultPatientWorkspaceProps['closeWorkspaceWithSavedChanges'];
-  promptBeforeClosing: DefaultPatientWorkspaceProps['promptBeforeClosing'];
+  orderToEditOrdererUuid?: string;
+  orderTypeUuid: string;
+  setHasUnsavedChanges: (hasUnsavedChanges: boolean) => void;
+  patient: fhir.Patient;
 }
 
 // Designs:
@@ -39,20 +41,21 @@ export interface MedicalSupplyOrderFormProps {
 //   https://app.zeplin.io/project/60d5947dd636aebbd63dce4c/screen/640b06d286e0aa7b0316db4a
 export function MedicalSupplyOrderForm({
   initialOrder,
+  orderToEditOrdererUuid,
   closeWorkspace,
-  closeWorkspaceWithSavedChanges,
-  promptBeforeClosing,
+  orderTypeUuid,
+  setHasUnsavedChanges,
+  patient,
 }: MedicalSupplyOrderFormProps) {
   const { t } = useTranslation();
   const isTablet = useLayoutType() === 'tablet';
   const session = useSession();
-  const { orders, setOrders } = useOrderBasket<MedicalSupplyOrderBasketItem>(
-    'medicalsupply',
-    prepMedicalSupplyOrderPostData,
-  );
+  
+  const { orders: configOrders, careSettingUuid } = useConfig<MedicalSupplyConfig>();
+  const { orders, setOrders } = useOrderBasket<MedicalSupplyOrderBasketItem>(patient, orderTypeUuid, createPrepMedicalSupplyPostData(configOrders.medicalSupplyOrderTypeUuid, careSettingUuid));
+
   const [showErrorNotification, setShowErrorNotification] = useState(false);
 
-  const config = useConfig<MedicalSupplyConfig>();
   const { quantityUnits } = useQuantityUnits();
 
   const medicalSupplyOrderFormSchema = z.object({
@@ -105,18 +108,14 @@ export function MedicalSupplyOrderForm({
       const orderIndex = existingOrder ? orders.indexOf(existingOrder) : orders.length;
       newOrders[orderIndex] = data;
       setOrders(newOrders);
-      closeWorkspaceWithSavedChanges({
-        onWorkspaceClose: () => launchWorkspace('order-basket'),
-      });
+      closeWorkspace();
     },
-    [orders, setOrders, session?.currentProvider?.uuid, defaultValues, closeWorkspaceWithSavedChanges],
+    [orders, setOrders, session?.currentProvider?.uuid, defaultValues, closeWorkspace],
   );
 
   const cancelOrder = useCallback(() => {
     setOrders(orders.filter((order) => order.testType.conceptUuid !== defaultValues.testType.conceptUuid));
-    closeWorkspace({
-      onWorkspaceClose: () => launchWorkspace('order-basket'),
-    });
+    closeWorkspace();
   }, [closeWorkspace, orders, setOrders, defaultValues]);
 
   const onError = (errors: FieldErrors<MedicalSupplyOrderBasketItem>) => {
@@ -125,10 +124,6 @@ export function MedicalSupplyOrderForm({
     }
   };
 
-  useEffect(() => {
-    promptBeforeClosing(() => isDirty);
-  }, [isDirty, promptBeforeClosing]);
-
   return (
     <>
       <Form
@@ -136,7 +131,7 @@ export function MedicalSupplyOrderForm({
         onSubmit={handleSubmit(handleFormSubmission, onError)}
         id="medicalSupplyOrderForm">
         <div className={styles.form}>
-          <ExtensionSlot name="top-of-imaging-order-form-slot" state={{ order: initialOrder }} />
+          <ExtensionSlot name="top-of-medical-supply-order-form-slot" state={{ order: initialOrder }} />
 
           <Grid className={styles.gridRow}>
             <Column lg={16} md={8} sm={4}>

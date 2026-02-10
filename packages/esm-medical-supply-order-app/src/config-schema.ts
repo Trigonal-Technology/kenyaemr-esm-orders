@@ -1,3 +1,4 @@
+import { careSettingUuid } from './form/add-medical-supply-order/api';
 import { Type } from '@openmrs/esm-framework';
 
 export const configSchema = {
@@ -5,6 +6,16 @@ export const configSchema = {
     _type: Type.String,
     _description: 'Medical Supply Quantity Units Concept SET UUID',
     _default: '162402AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+  },
+  medicalSupplyConceptSetUuid: {
+    _type: Type.String,
+    _description: 'Medical Supply Concept SET UUID',
+    _default: '',
+  },
+  medicalSupplyConceptClassUuid: {
+    _type: Type.String,
+    _description: 'Medical Supply Concept Class UUID',
+    _default: '',
   },
   orders: {
     medicalSupplyOrderTypeUuid: {
@@ -22,6 +33,11 @@ export const configSchema = {
       _default: [],
     },
   },
+  careSettingUuid: {
+    _type: Type.String,
+    _description: 'Care Setting UUID',
+    _default: '6f0c9a92-6f24-11e3-af88-005056821db0',
+  },
 };
 
 interface OrderReason {
@@ -31,9 +47,12 @@ interface OrderReason {
 }
 export type MedicalSupplyConfig = {
   medicalSupplyQuantityUnitsConceptSetUuid: string;
+  medicalSupplyConceptClassUuid: string;
+  medicalSupplyConceptSetUuid: string;
   orders: {
     medicalSupplyOrderableConcepts: Array<string>;
     medicalSupplyOrderTypeUuid: string;
   };
+  careSettingUuid: string;
   medicalSupplyWithOrderReasons: Array<OrderReason>;
 };

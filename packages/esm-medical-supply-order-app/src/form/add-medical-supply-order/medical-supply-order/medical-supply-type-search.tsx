@@ -3,27 +3,27 @@ import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { Button, ButtonSkeleton, Search, SkeletonText, Tile } from '@carbon/react';
 import { ArrowRight, ShoppingCartArrowDown, ShoppingCartArrowUp } from '@carbon/react/icons';
-import {
-  useDebounce,
-  useLayoutType,
-  useSession,
-  ResponsiveWrapper,
-  closeWorkspace,
-  launchWorkspace,
-} from '@openmrs/esm-framework';
+import { useDebounce, useLayoutType, useSession, ResponsiveWrapper, closeWorkspace, launchWorkspace, useConfig } from '@openmrs/esm-framework';
 import { useOrderBasket } from '@openmrs/esm-patient-common-lib';
-import styles from './medical-supply-type-search.scss';
-import { type MedicalSupplyOrderBasketItem } from '../../../types';
-import { createEmptyMedicalSupplyOrder } from './medical-supply-order';
+import { createPrepMedicalSupplyPostData } from '../api';
 import { type MedicalSupplyType } from '../../../hooks/useMedicalSupplyTypes';
-import { prepMedicalSupplyOrderPostData } from '../api';
+import { UseMedicalSupplyType } from '../../../hooks/useMedicalSupplyTypes';
+import { createEmptyMedicalSupplyOrder } from './medical-supply-order';
+import { type MedicalSupplyOrderBasketItem } from '../../../types';
+import type { Workspace2DefinitionProps, Visit } from '@openmrs/esm-framework';
+import type { MedicalSupplyConfig } from '../../../config-schema';
 import { useMedicalSupplySearch } from './medical-supply-order.resource';
+import styles from './medical-supply-type-search.scss';
 
-export interface MedicalSupplyTypeSearchProps {
-  openMedicalSupplyForm: (searchResult: MedicalSupplyOrderBasketItem) => void;
+export interface TestTypeSearchProps {
+  openLabForm: (searchResult: MedicalSupplyOrderBasketItem) => void;
+  orderTypeUuid: string;
+  closeWorkspace: Workspace2DefinitionProps['closeWorkspace'];
+  patient: any;
+  visit: Visit;
 }
 
-export function MedicalSupplyTypeSearch({ openMedicalSupplyForm }: MedicalSupplyTypeSearchProps) {
+export function MedicalSupplyTypeSearch({ openLabForm, patient, orderTypeUuid, closeWorkspace }: TestTypeSearchProps) {
   const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm);
@@ -51,35 +51,41 @@ export function MedicalSupplyTypeSearch({ openMedicalSupplyForm }: MedicalSupply
           value={searchTerm}
         />
       </ResponsiveWrapper>
-      <MedicalSupplyTypeSearchResults
+      <TestTypeSearchResults
         searchTerm={debouncedSearchTerm}
-        openOrderForm={openMedicalSupplyForm}
+        openOrderForm={openLabForm}
         focusAndClearSearchInput={focusAndClearSearchInput}
+        patient={patient}
+        orderTypeUuid={orderTypeUuid}
+        closeWorkspace={closeWorkspace}
       />
     </>
   );
 }
 
-interface MedicalSupplyTypeSearchResultsProps {
+interface TestTypeSearchResultsProps {
   searchTerm: string;
   openOrderForm: (searchResult: MedicalSupplyOrderBasketItem) => void;
   focusAndClearSearchInput: () => void;
+  patient: any;
+  orderTypeUuid: string;
+  closeWorkspace: Workspace2DefinitionProps['closeWorkspace'];
 }
 
-function MedicalSupplyTypeSearchResults({
+function TestTypeSearchResults({
   searchTerm,
   openOrderForm,
   focusAndClearSearchInput,
-}: MedicalSupplyTypeSearchResultsProps) {
+  patient,
+  orderTypeUuid,
+  closeWorkspace,
+}: TestTypeSearchResultsProps) {
   const { t } = useTranslation();
   const isTablet = useLayoutType() === 'tablet';
-  const { searchResults, isLoading, error } = useMedicalSupplySearch(searchTerm, 'Medical supply');
-  if (!searchTerm) {
-    return <div className={styles.container}></div>;
-  }
+  const { testTypes, isLoading, error } = useMedicalSupplySearch(searchTerm, orderTypeUuid);
 
   if (isLoading) {
-    return <MedicalSupplyTypeSearchSkeleton />;
+    return <TestTypeSearchSkeleton />;
   }
 
   if (error) {
@@ -101,13 +107,13 @@ function MedicalSupplyTypeSearchResults({
 
   return (
     <>
-      {searchResults?.length ? (
+      {testTypes?.length ? (
         <div className={styles.container}>
           {searchTerm && (
             <div className={styles.orderBasketSearchResultsHeader}>
               <span className={styles.searchResultsCount}>
                 {t('searchResultsMatchesForTerm', '{{count}} results for "{{searchTerm}}"', {
-                  count: searchResults?.length,
+                  count: testTypes?.length,
                   searchTerm,
                 })}
               </span>
@@ -117,11 +123,14 @@ function MedicalSupplyTypeSearchResults({
             </div>
           )}
           <div className={styles.resultsContainer}>
-            {searchResults.map((testType) => (
-              <MedicalSupplyTypeSearchResultItem
+            {testTypes.map((testType) => (
+              <TestTypeSearchResultItem
                 key={testType.conceptUuid}
                 testType={testType}
                 openOrderForm={openOrderForm}
+                patient={patient}
+                orderTypeUuid={orderTypeUuid}
+                closeWorkspace={closeWorkspace}
               />
             ))}
           </div>
@@ -149,27 +158,35 @@ function MedicalSupplyTypeSearchResults({
   );
 }
 
-interface MedicalSupplyTypeSearchResultItemProps {
+interface TestTypeSearchResultItemProps {
   testType: MedicalSupplyType;
   openOrderForm: (searchResult: MedicalSupplyOrderBasketItem) => void;
+  patient: any;
+  orderTypeUuid: string;
+  closeWorkspace: Workspace2DefinitionProps['closeWorkspace'];
 }
 
-const MedicalSupplyTypeSearchResultItem: React.FC<MedicalSupplyTypeSearchResultItemProps> = ({
+const TestTypeSearchResultItem: React.FC<TestTypeSearchResultItemProps> = ({
   testType,
   openOrderForm,
+  patient,
+  orderTypeUuid,
+  closeWorkspace,
 }) => {
   const isTablet = useLayoutType() === 'tablet';
   const session = useSession();
+  const { orders: configOrders, careSettingUuid } = useConfig<MedicalSupplyConfig>();
   const { orders, setOrders } = useOrderBasket<MedicalSupplyOrderBasketItem>(
-    'medicalsupply',
-    prepMedicalSupplyOrderPostData,
+    patient,
+    orderTypeUuid,
+    createPrepMedicalSupplyPostData(configOrders.medicalSupplyOrderTypeUuid, careSettingUuid),
   );
   const testTypeAlreadyInBasket = useMemo(
     () => orders?.some((order) => order.testType.conceptUuid === testType.conceptUuid),
     [orders, testType],
   );
 
-  const createMedicalSupplyOrder = useCallback(
+  const createLabOrder = useCallback(
     (testType: MedicalSupplyType) => {
       return createEmptyMedicalSupplyOrder(testType, session.currentProvider.uuid);
     },
@@ -179,14 +196,11 @@ const MedicalSupplyTypeSearchResultItem: React.FC<MedicalSupplyTypeSearchResultI
   const { t } = useTranslation();
 
   const addToBasket = useCallback(() => {
-    const medicalSupplyOrder = createMedicalSupplyOrder(testType);
-    medicalSupplyOrder.isOrderIncomplete = true;
-    setOrders([...orders, medicalSupplyOrder]);
-    closeWorkspace('add-medical-supply-order', {
-      ignoreChanges: true,
-      onWorkspaceClose: () => launchWorkspace('order-basket'),
-    });
-  }, [orders, setOrders, createMedicalSupplyOrder, testType]);
+    const labOrder = createLabOrder(testType);
+    labOrder.isOrderIncomplete = true;
+    setOrders([...orders, labOrder]);
+    closeWorkspace();
+  }, [orders, setOrders, createLabOrder, testType, closeWorkspace]);
 
   const removeFromBasket = useCallback(() => {
     setOrders(orders.filter((order) => order.testType.conceptUuid !== testType.conceptUuid));
@@ -223,7 +237,7 @@ const MedicalSupplyTypeSearchResultItem: React.FC<MedicalSupplyTypeSearchResultI
         <Button
           kind="ghost"
           renderIcon={(props) => <ArrowRight size={16} {...props} />}
-          onClick={() => openOrderForm(createMedicalSupplyOrder(testType))}>
+          onClick={() => openOrderForm(createLabOrder(testType))}>
           {t('goToDrugOrderForm', 'Order form')}
         </Button>
       </div>
@@ -231,11 +245,10 @@ const MedicalSupplyTypeSearchResultItem: React.FC<MedicalSupplyTypeSearchResultI
   );
 };
 
-const MedicalSupplyTypeSearchSkeleton = () => {
+const TestTypeSearchSkeleton = () => {
   const isTablet = useLayoutType() === 'tablet';
-  const tileClassName = `${isTablet ? `${styles.tabletSearchResultTile}` : `${styles.desktopSearchResultTile}`} ${
-    styles.skeletonTile
-  }`;
+  const tileClassName = `${isTablet ? `${styles.tabletSearchResultTile}` : `${styles.desktopSearchResultTile}`} ${styles.skeletonTile
+    }`;
   return (
     <div className={styles.searchResultSkeletonWrapper}>
       <div className={styles.orderBasketSearchResultsHeader}>

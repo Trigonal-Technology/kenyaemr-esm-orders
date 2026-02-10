@@ -17,6 +17,8 @@ export interface MedicalSupplyOrderBasketItem extends OrderBasketItem {
   quantityUnits?: string;
   previousOrder?: string;
   brandName?: string;
+  orderer?: string;
+  careSetting?: string;
 }
 
 export type OrderFrequency = CommonMedicalSupplyValueCoded;

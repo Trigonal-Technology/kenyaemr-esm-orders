@@ -38,10 +38,21 @@ export interface MedicalSupplyOrderPost extends OrderPost {
   quantityUnits?: string;
 }
 
+export function createPrepMedicalSupplyPostData(
+  radiologyOrderTypeUuid: string,
+  careSettingUuid: string,
+): PostDataPrepMedicalSupplyOrderFunction {
+  return (order: MedicalSupplyOrderBasketItem, patientUuid: string, encounterUuid: string) => {
+    return prepMedicalSupplyOrderPostData(order, patientUuid, encounterUuid, radiologyOrderTypeUuid, careSettingUuid);
+  };
+}
+
 export function prepMedicalSupplyOrderPostData(
   order: MedicalSupplyOrderBasketItem,
   patientUuid: string,
   encounterUuid: string,
+  medicalSupplyUuid?: string,
+  careSettingUuid?: string,
 ): MedicalSupplyOrderPost {
   let payload = {};
   if (order.action === 'NEW' || order.action === 'RENEW') {
@@ -50,6 +61,7 @@ export function prepMedicalSupplyOrderPostData(
       type: 'medicalsupplyorder',
       patient: patientUuid,
       careSetting: careSettingUuid,
+      orderType: medicalSupplyUuid,
       orderer: order.orderer,
       encounter: encounterUuid,
       concept: order.testType.conceptUuid,
@@ -68,6 +80,7 @@ export function prepMedicalSupplyOrderPostData(
       careSetting: order.careSetting,
       orderer: order.orderer,
       encounter: encounterUuid,
+      orderType: medicalSupplyUuid,
       concept: order.testType.conceptUuid,
       instructions: order.instructions,
       urgency: order.urgency,
@@ -83,6 +96,7 @@ export function prepMedicalSupplyOrderPostData(
       type: 'medicalsupplyorder',
       patient: patientUuid,
       careSetting: order.careSetting,
+      orderType: medicalSupplyUuid,
       orderer: order.orderer,
       encounter: encounterUuid,
       concept: order.testType.conceptUuid,

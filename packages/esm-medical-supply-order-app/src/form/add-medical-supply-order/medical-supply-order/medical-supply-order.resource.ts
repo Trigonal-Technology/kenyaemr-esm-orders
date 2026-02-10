@@ -25,7 +25,7 @@ export function useMedicalSupplySearch(searchTerm: string, medicalSupplyConceptC
   }, [medicalSupplyConcepts, searchTerm, error, isLoading]);
 
   return {
-    searchResults: filteredMedicalSupplyTypes,
+    testTypes: filteredMedicalSupplyTypes,
     isLoading: isLoading,
     error: error,
   };
