@@ -8,7 +8,8 @@
     {
       "component": "procedureDashboardLink",
       "name": "procedure-dashboard-link",
-      "slot": "homepage-dashboard-slot",
+      "slot": "order-basket-slot",
+      "order": 0,
       "meta": {
         "name": "procedure",
         "title": "procedure",
@@ -153,6 +154,13 @@
       "title": "Search patient",
       "type": "other-form",
       "width": "extra-wide"
+    }
+  ],
+  "workspaces2": [
+    {
+      "name": "add-procedures-order",
+      "component": "addProceduresOrderWorkspace",
+      "window": "patient-chart-order-basket"
     }
   ],
   "modals": [

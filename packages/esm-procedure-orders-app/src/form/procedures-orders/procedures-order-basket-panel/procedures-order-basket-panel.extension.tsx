@@ -1,20 +1,74 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { type ComponentProps, useCallback, useEffect, useMemo, useState } from 'react';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { Button, Tile } from '@carbon/react';
-import { Add, ChevronDown, ChevronUp } from '@carbon/react/icons';
-import { useLayoutType, closeWorkspace, launchWorkspace } from '@openmrs/esm-framework';
-import { type OrderBasketItem, useOrderBasket } from '@openmrs/esm-patient-common-lib';
+import { AddIcon, ChevronDownIcon, ChevronUpIcon, useLayoutType, useConfig, MaybeIcon, launchWorkspace2 } from '@openmrs/esm-framework';
+import {
+  useOrderBasket,
+  useOrderType,
+  type OrderBasketExtensionProps,
+} from '@openmrs/esm-patient-common-lib';
+import type { ProcedureOrderBasketItem } from '../../../types';
+import type { ConfigObject } from '../../../config-schema';
 import { ProceduresOrderBasketItemTile } from './procedures-order-basket-item-tile.component';
 import { prepProceduresOrderPostData } from '../api';
-import LabIcon from './procedures-icon.component';
+import ProcedureIcon from './procedures-icon.component';
 import styles from './procedures-order-basket-panel.scss';
-import { type ProcedureOrderBasketItem } from '../../../types';
 
-export default function ProceduresOrderBasketPanelExtension() {
+/**
+ * The extension is slotted into order-basket-slot in the main Order Basket workspace by default.
+ * It renders the "Add +" button for imaging orders, and lists pending imaging orders in the order basket.
+ *
+ * Designs: https://app.zeplin.io/project/60d59321e8100b0324762e05/screen/648c44d9d4052c613e7f23da
+ */
+export function ProceduresOrderBasketPanelExtension({ patient }: OrderBasketExtensionProps) {
+  const { orders } = useConfig<ConfigObject>();
+  const { t } = useTranslation();
+
+  const launchProceduresOrderForm = useCallback((orderTypeUuid: string, order?: ProcedureOrderBasketItem) => {
+    launchWorkspace2('add-procedures-order', { orderTypeUuid, order }, null, null);
+  }, []);
+
+  const allOrderTypes: any = [
+    {
+      label: t('procedureOrders', 'Procedure orders'),
+      orderTypeUuid: '4237a01f-29c5-4167-9d8e-96d6e590aa33',
+      icon: 'omrs-icon-lab-order',
+    },
+  ];
+
+  return (
+    <>
+      {allOrderTypes.map((orderTypeConfig) => (
+        <ProceduresOrderBasketPanel
+          key={orderTypeConfig.orderTypeUuid}
+          patient={patient}
+          {...orderTypeConfig}
+          launchProceduresOrderForm={launchProceduresOrderForm}
+        />
+      ))}
+    </>
+  );
+}
+
+type OrderTypeConfig = any;
+
+interface ProceduresOrderBasketPanelProps extends OrderTypeConfig {
+  patient: fhir.Patient;
+  launchProceduresOrderForm(orderTypeUuid: string, order?: ProcedureOrderBasketItem): void;
+}
+
+function ProceduresOrderBasketPanel({ orderTypeUuid, label, icon, patient, launchProceduresOrderForm }: ProceduresOrderBasketPanelProps) {
   const { t } = useTranslation();
   const isTablet = useLayoutType() === 'tablet';
-  const { orders, setOrders } = useOrderBasket<ProcedureOrderBasketItem>('procedures', prepProceduresOrderPostData);
+  const responsiveSize = isTablet ? 'md' : 'sm';
+  const isDefaultLabOrder = icon === 'omrs-icon-lab-order';
+  const { orderType, isLoadingOrderType } = useOrderType(orderTypeUuid);
+  const { orders, setOrders } = useOrderBasket<ProcedureOrderBasketItem>(
+    patient,
+    orderTypeUuid,
+    prepProceduresOrderPostData,
+  );
   const [isExpanded, setIsExpanded] = useState(orders.length > 0);
   const {
     incompleteOrderBasketItems,
@@ -29,7 +83,8 @@ export default function ProceduresOrderBasketPanelExtension() {
     const revisedOrderBasketItems: Array<ProcedureOrderBasketItem> = [];
     const discontinuedOrderBasketItems: Array<ProcedureOrderBasketItem> = [];
 
-    orders.forEach((order) => {
+    // Filter out any undefined or null orders to prevent errors
+    orders.filter(Boolean).forEach((order) => {
       if (order?.isOrderIncomplete) {
         incompleteOrderBasketItems.push(order);
       } else if (order.action === 'NEW') {
@@ -52,22 +107,6 @@ export default function ProceduresOrderBasketPanelExtension() {
     };
   }, [orders]);
 
-  const openNewProceduresForm = useCallback(() => {
-    closeWorkspace('order-basket', {
-      ignoreChanges: true,
-      onWorkspaceClose: () => {
-        launchWorkspace('add-procedures-order');
-      },
-    });
-  }, []);
-
-  const openEditProceduresForm = useCallback((order: OrderBasketItem) => {
-    closeWorkspace('order-basket', {
-      ignoreChanges: true,
-      onWorkspaceClose: () => launchWorkspace('add-procedures-order', { order }),
-    });
-  }, []);
-
   const removeLabOrder = useCallback(
     (order: ProcedureOrderBasketItem) => {
       const newOrders = [...orders];
@@ -83,33 +122,42 @@ export default function ProceduresOrderBasketPanelExtension() {
 
   return (
     <Tile
-      className={classNames(isTablet ? styles.tabletTile : styles.desktopTile, {
+      className={classNames(styles.tile, isTablet ? styles.tabletTile : styles.desktopTile, {
         [styles.collapsedTile]: !isExpanded,
-      })}>
-      <div className={styles.container}>
+      })}
+    >
+      <div className={classNames(isTablet ? styles.tabletContainer : styles.desktopContainer)}>
         <div className={styles.iconAndLabel}>
-          <LabIcon isTablet={isTablet} />
-          <h4 className={styles.heading}>{`${t('proceduresOrders', 'Procedures orders')} (${orders.length})`}</h4>
+          {isDefaultLabOrder ? (
+            <ProcedureIcon isTablet={isTablet} />
+          ) : (
+            <MaybeIcon icon={icon ? icon : 'omrs-icon-generic-order-type'} size={isTablet ? 40 : 24} />
+          )}
+          <h4 className={styles.heading}>{`${label ? t(label) : orderType?.display} (${orders.length})`}</h4>
         </div>
         <div className={styles.buttonContainer}>
           <Button
+            className={styles.addButton}
+            iconDescription="Add procedure Order"
             kind="ghost"
-            renderIcon={(props) => <Add size={16} {...props} />}
-            iconDescription="Add procedures order"
-            onClick={openNewProceduresForm}
-            size={isTablet ? 'md' : 'sm'}>
+            onClick={() => launchProceduresOrderForm(orderTypeUuid)}
+            renderIcon={(props: ComponentProps<typeof AddIcon>) => <AddIcon size={16} {...props} />}
+            size={responsiveSize}
+          >
             {t('add', 'Add')}
           </Button>
           <Button
             className={styles.chevron}
-            hasIconOnly
-            kind="ghost"
-            renderIcon={(props) =>
-              isExpanded ? <ChevronUp size={16} {...props} /> : <ChevronDown size={16} {...props} />
-            }
-            iconDescription="View"
             disabled={orders.length === 0}
-            onClick={() => setIsExpanded(!isExpanded)}>
+            hasIconOnly
+            iconDescription="View"
+            kind="ghost"
+            onClick={() => setIsExpanded(!isExpanded)}
+            renderIcon={(props: ComponentProps<typeof ChevronUpIcon>) =>
+              isExpanded ? <ChevronUpIcon size={16} {...props} /> : <ChevronDownIcon size={16} {...props} />
+            }
+            size={responsiveSize}
+          >
             {t('add', 'Add')}
           </Button>
         </div>
@@ -123,9 +171,9 @@ export default function ProceduresOrderBasketPanelExtension() {
                   {incompleteOrderBasketItems.map((order) => (
                     <ProceduresOrderBasketItemTile
                       key={order.uuid}
-                      orderBasketItem={order}
-                      onItemClick={() => openEditProceduresForm(order)}
+                      onItemClick={() => launchProceduresOrderForm(orderTypeUuid, order)}
                       onRemoveClick={() => removeLabOrder(order)}
+                      orderBasketItem={order}
                     />
                   ))}
                 </>
@@ -135,9 +183,9 @@ export default function ProceduresOrderBasketPanelExtension() {
                   {newOrderBasketItems.map((order) => (
                     <ProceduresOrderBasketItemTile
                       key={order.uuid}
-                      orderBasketItem={order}
-                      onItemClick={() => openEditProceduresForm(order)}
+                      onItemClick={() => launchProceduresOrderForm(orderTypeUuid, order)}
                       onRemoveClick={() => removeLabOrder(order)}
+                      orderBasketItem={order}
                     />
                   ))}
                 </>
@@ -148,9 +196,9 @@ export default function ProceduresOrderBasketPanelExtension() {
                   {renewedOrderBasketItems.map((order) => (
                     <ProceduresOrderBasketItemTile
                       key={order.uuid}
-                      orderBasketItem={order}
-                      onItemClick={() => openEditProceduresForm(order)}
+                      onItemClick={() => launchProceduresOrderForm(orderTypeUuid, order)}
                       onRemoveClick={() => removeLabOrder(order)}
+                      orderBasketItem={order}
                     />
                   ))}
                 </>
@@ -161,9 +209,9 @@ export default function ProceduresOrderBasketPanelExtension() {
                   {revisedOrderBasketItems.map((order) => (
                     <ProceduresOrderBasketItemTile
                       key={order.uuid}
-                      orderBasketItem={order}
-                      onItemClick={() => openEditProceduresForm(order)}
+                      onItemClick={() => launchProceduresOrderForm(orderTypeUuid, order)}
                       onRemoveClick={() => removeLabOrder(order)}
+                      orderBasketItem={order}
                     />
                   ))}
                 </>
@@ -174,9 +222,9 @@ export default function ProceduresOrderBasketPanelExtension() {
                   {discontinuedOrderBasketItems.map((order) => (
                     <ProceduresOrderBasketItemTile
                       key={order.uuid}
-                      orderBasketItem={order}
-                      onItemClick={() => openEditProceduresForm(order)}
+                      onItemClick={() => launchProceduresOrderForm(orderTypeUuid, order)}
                       onRemoveClick={() => removeLabOrder(order)}
+                      orderBasketItem={order}
                     />
                   ))}
                 </>
@@ -188,3 +236,6 @@ export default function ProceduresOrderBasketPanelExtension() {
     </Tile>
   );
 }
+
+export default ProceduresOrderBasketPanelExtension;
+

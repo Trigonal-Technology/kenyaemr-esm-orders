@@ -37,6 +37,8 @@
     "url": "https://github.com/palladiumkenya/kenyaemr-esm-core/issues"
   },
   "dependencies": {
+    "@rspack/cli": "^1.7.5",
+    "@rspack/core": "^1.7.5",
     "lodash-es": "^4.17.15",
     "react-to-print": "^2.14.13"
   },

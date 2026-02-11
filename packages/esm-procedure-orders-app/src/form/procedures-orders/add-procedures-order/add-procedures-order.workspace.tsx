@@ -1,94 +1,34 @@
-import React, { useCallback, useState } from 'react';
-import classNames from 'classnames';
-import capitalize from 'lodash-es/capitalize';
-import { useTranslation } from 'react-i18next';
-import { Button } from '@carbon/react';
-import { ArrowLeft } from '@carbon/react/icons';
+import React from 'react';
 import {
-  age,
-  formatDate,
-  launchWorkspace,
-  parseDate,
-  useLayoutType,
-  usePatient,
-  type DefaultWorkspaceProps,
-} from '@openmrs/esm-framework';
-import { type OrderBasketItem } from '@openmrs/esm-patient-common-lib';
-import { TestTypeSearch } from './procedures-type-search';
-import { ProceduresOrderForm } from './procedures-order-form.component';
-import styles from './add-procedures-order.scss';
-import { type ProcedureOrderBasketItem } from '../../../types';
+  type OrderBasketWindowProps,
+  type OrderBasketItem,
+  type PatientWorkspace2DefinitionProps,
+} from '@openmrs/esm-patient-common-lib';
+import AddImagingOrder from './add-imaging-order.component';
 
-export interface AddProcedureOrderWorkspaceAdditionalProps {
+export interface AddTestOrderWorkspaceProps {
   order?: OrderBasketItem;
+  orderTypeUuid: string;
+
+  /**
+   * This field should only be supplied for an existing order saved to the backend
+   */
+  orderToEditOrdererUuid?: string;
 }
 
-export interface AddProceduresOrderWorkspace extends DefaultWorkspaceProps, AddProcedureOrderWorkspaceAdditionalProps {}
-
-export default function AddProceduresOrderWorkspace({
-  order: initialOrder,
+export default function AddTestOrderWorkspace({
+  groupProps: { patient, visitContext },
+  workspaceProps: { order: initialOrder, orderTypeUuid, orderToEditOrdererUuid },
   closeWorkspace,
-  closeWorkspaceWithSavedChanges,
-  promptBeforeClosing,
-}: AddProceduresOrderWorkspace) {
-  const { t } = useTranslation();
-
-  const { patient, isLoading: isLoadingPatient } = usePatient();
-  const [currentLabOrder, setCurrentLabOrder] = useState(initialOrder as ProcedureOrderBasketItem);
-
-  const isTablet = useLayoutType() === 'tablet';
-
-  const patientName = `${patient?.name?.[0]?.given?.join(' ')} ${patient?.name?.[0].family}`;
-
-  const cancelOrder = useCallback(() => {
-    closeWorkspace({
-      ignoreChanges: true,
-      onWorkspaceClose: () => launchWorkspace('order-basket'),
-    });
-  }, [closeWorkspace]);
-
+}: PatientWorkspace2DefinitionProps<AddTestOrderWorkspaceProps, OrderBasketWindowProps>) {
   return (
-    <div className={styles.container}>
-      {isTablet && !isLoadingPatient && (
-        <div className={styles.patientHeader}>
-          <span className={styles.bodyShort02}>{patientName}</span>
-          <span className={classNames(styles.text02, styles.bodyShort01)}>
-            {capitalize(patient?.gender)} &middot; {age(patient?.birthDate)} &middot;{' '}
-            <span>
-              {formatDate(parseDate(patient?.birthDate), {
-                mode: 'wide',
-                time: false,
-              })}
-            </span>
-          </span>
-        </div>
-      )}
-      {!isTablet && (
-        <div className={styles.backButton}>
-          <Button
-            kind="ghost"
-            renderIcon={(props) => <ArrowLeft size={24} {...props} />}
-            iconDescription="Return to order basket"
-            size="sm"
-            onClick={cancelOrder}>
-            <span>{t('backToOrderBasket', 'Back to order basket')}</span>
-          </Button>
-        </div>
-      )}
-      {!currentLabOrder ? (
-        <div>
-          <TestTypeSearch openLabForm={setCurrentLabOrder} />
-        </div>
-      ) : (
-        <div>
-          <ProceduresOrderForm
-            initialOrder={currentLabOrder}
-            closeWorkspace={closeWorkspace}
-            closeWorkspaceWithSavedChanges={closeWorkspaceWithSavedChanges}
-            promptBeforeClosing={promptBeforeClosing}
-          />
-        </div>
-      )}
-    </div>
+    <AddImagingOrder
+      patient={patient}
+      orderToEditOrdererUuid={orderToEditOrdererUuid}
+      visitContext={visitContext}
+      initialOrder={initialOrder}
+      orderTypeUuid={orderTypeUuid}
+      closeWorkspace={closeWorkspace}
+    />
   );
 }

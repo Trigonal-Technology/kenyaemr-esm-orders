@@ -3,14 +3,12 @@ import { mutate } from 'swr';
 import { useTranslation } from 'react-i18next';
 import {
   ExtensionSlot,
-  launchWorkspaceGroup,
+  launchWorkspaceGroup2,
   setCurrentVisit,
   useVisit,
   showSnackbar,
   type DefaultWorkspaceProps,
 } from '@openmrs/esm-framework';
-import { getPatientChartStore } from '@openmrs/esm-patient-common-lib';
-
 import styles from './search-patient-workspace.scss';
 
 const SearchPatientWorkspace: React.FC<DefaultWorkspaceProps> = ({ closeWorkspace }) => {
@@ -24,7 +22,7 @@ const SearchPatientWorkspace: React.FC<DefaultWorkspaceProps> = ({ closeWorkspac
         showSnackbar({
           kind: 'warning',
           title: t('noActiveVisit', 'No active visit'),
-          subtitle: t('noActiveVisitSubtitle', 'Start a visit to add a procedure order.'),
+          subtitle: t('noActiveVisitSubtitle', 'Start a visit to add an imaging order.'),
           isLowContrast: true,
           timeoutInMs: 5000,
         });
@@ -33,15 +31,9 @@ const SearchPatientWorkspace: React.FC<DefaultWorkspaceProps> = ({ closeWorkspac
       }
 
       setCurrentVisit(patientUuid, activeVisit.uuid);
-      launchWorkspaceGroup('add-procedures-order-workspace-group', {
+      launchWorkspaceGroup2('patient-chart', {
         state: {
           patientUuid,
-        },
-        onWorkspaceGroupLaunch: () => {
-          const store = getPatientChartStore();
-          store.setState({
-            patientUuid,
-          });
         },
         workspaceToLaunch: {
           name: 'add-procedures-order',
@@ -49,10 +41,6 @@ const SearchPatientWorkspace: React.FC<DefaultWorkspaceProps> = ({ closeWorkspac
         workspaceGroupCleanup: () => {
           mutate((key) => typeof key === 'string' && key.startsWith('/ws/rest/v1/order'), undefined, {
             revalidate: true,
-          });
-          const store = getPatientChartStore();
-          store.setState({
-            patientUuid: undefined,
           });
           setCurrentVisit(null, null);
         },

@@ -26,13 +26,13 @@ export const ProcedureHeader: React.FC = () => {
         <PageHeaderContent illustration={<Assessment1Pictogram />} title={t('procedures', 'Procedures')} />{' '}
         <div className={styles.pageHeaderActions}>
           <ExtensionSlot className={styles.providerBannerInfoSlot} name="provider-banner-info-slot" />
-          <Button
+          {/* <Button
             className={styles.addImagingOrderButton}
             size={responseSize}
             renderIcon={Add}
             onClick={launchAddProcedureOrderWorkspace}>
             {t('addProcedureOrder', 'Add Procedure Order')}
-          </Button>
+          </Button> */}
         </div>
       </PageHeader>
     </div>

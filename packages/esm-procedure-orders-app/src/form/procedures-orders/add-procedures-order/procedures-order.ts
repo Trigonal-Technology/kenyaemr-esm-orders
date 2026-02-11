@@ -12,11 +12,11 @@ export const categoryItems = [
   { value: '3798940f-87b8-464e-b36a-17da246f034e', label: 'Major' },
 ];
 
-export function createEmptyLabOrder(testType: ProceduresType, orderer: string): ProcedureOrderBasketItem {
+export function createEmptyLabOrder(testType: ProceduresType, orderer: string, visit): ProcedureOrderBasketItem {
   return {
     action: 'NEW',
     display: testType.label,
     testType,
-    orderer,
+    visit: undefined,
   };
 }

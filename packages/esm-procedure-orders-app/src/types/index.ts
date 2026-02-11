@@ -415,6 +415,7 @@ export interface WaitTime {
 }
 
 export interface ProcedureOrderBasketItem extends OrderBasketItem {
+  patient?: any;
   testType?: {
     label: string;
     conceptUuid: string;
@@ -435,6 +436,8 @@ export interface ProcedureOrderBasketItem extends OrderBasketItem {
   specimenType?: string;
   scheduleDate?: Date;
   bodySite?: string;
+  orderer?: string;
+  careSetting?: string;
 }
 
 export type OrderFrequency = CommonProceduresValueCoded;

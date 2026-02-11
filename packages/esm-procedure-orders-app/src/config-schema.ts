@@ -4,12 +4,12 @@ export const configSchema = {
   procedureOrderTypeUuid: {
     _type: Type.String,
     _description: 'Procedure Order type UUID',
-    _default: 'b4a7c280-369e-4d12-9ce8-18e36783fed6',
+    _default: '4237a01f-29c5-4167-9d8e-96d6e590aa33',
   },
   procedureConceptSetUuid: {
     _type: Type.String,
     _description: 'Procedure Concept SET UUID',
-    _default: '165418AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+    _default: '	0c3019b0-9bd3-4bc7-8e2c-e6230c31ed18',
   },
   testOrderTypeUuid: {
     _type: Type.String,

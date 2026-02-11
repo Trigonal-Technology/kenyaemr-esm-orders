@@ -36,25 +36,34 @@ import styles from './procedures-order-form.scss';
 import type { ProcedureOrderBasketItem, OrderFrequency } from '../../../types';
 import { useOrderConfig } from '../order-config';
 import { moduleName } from '../../../constants';
+import { Workspace2DefinitionProps } from '@openmrs/esm-framework';
 
 export interface ProceduresOrderFormProps {
+  closeWorkspace: Workspace2DefinitionProps['closeWorkspace'];
   initialOrder: ProcedureOrderBasketItem;
-  closeWorkspace: DefaultWorkspaceProps['closeWorkspace'];
-  closeWorkspaceWithSavedChanges: DefaultWorkspaceProps['closeWorkspaceWithSavedChanges'];
-  promptBeforeClosing: DefaultWorkspaceProps['promptBeforeClosing'];
+
+  /**
+   * This field should only be supplied for an existing order saved to the backend
+   */
+  orderToEditOrdererUuid?: string;
+  orderTypeUuid: string;
+  setHasUnsavedChanges: (hasUnsavedChanges: boolean) => void;
+  patient: fhir.Patient;
 }
 
 export function ProceduresOrderForm({
   initialOrder,
+  orderToEditOrdererUuid,
   closeWorkspace,
-  closeWorkspaceWithSavedChanges,
-  promptBeforeClosing,
+  orderTypeUuid,
+  setHasUnsavedChanges,
+  patient,
 }: ProceduresOrderFormProps) {
   const { t } = useTranslation();
   const isTablet = useLayoutType() === 'tablet';
   const session = useSession();
   const { orderConfigObject, isLoading: isLoadingOrderConfig, error: errorFetchingOrderConfig } = useOrderConfig();
-  const { orders, setOrders } = useOrderBasket<ProcedureOrderBasketItem>('procedures', prepProceduresOrderPostData);
+  const { orders, setOrders } = useOrderBasket<ProcedureOrderBasketItem>(patient, orderTypeUuid, prepProceduresOrderPostData);
   const { testTypes, isLoading: isLoadingTestTypes, error: errorLoadingTestTypes } = useProceduresTypes();
   const [showErrorNotification, setShowErrorNotification] = useState(false);
   const {
@@ -92,13 +101,13 @@ export function ProceduresOrderForm({
     category: z.string().optional(),
     orderReason: orderReasonRequired
       ? z
-          .string({
-            required_error: translateFrom(moduleName, 'addLabOrderLabOrderReasonRequired', 'Order reason is required'),
-          })
-          .refine(
-            (value) => !!value,
-            translateFrom(moduleName, 'addLabOrderLabOrderReasonRequired', 'Order reason is required'),
-          )
+        .string({
+          required_error: translateFrom(moduleName, 'addLabOrderLabOrderReasonRequired', 'Order reason is required'),
+        })
+        .refine(
+          (value) => !!value,
+          translateFrom(moduleName, 'addLabOrderLabOrderReasonRequired', 'Order reason is required'),
+        )
       : z.string().optional(),
     scheduleDate: z.union([z.string(), z.date(), z.string().optional()]),
     commentsToFulfiller: z.string().optional(),
@@ -139,23 +148,20 @@ export function ProceduresOrderForm({
       data.action = 'NEW';
       data.careSetting = careSettingUuid;
       data.orderer = session.currentProvider.uuid;
+      data.patient = patient;
       const newOrders = [...orders];
       const existingOrder = orders.find((order) => order.testType.conceptUuid == defaultValues.testType.conceptUuid);
       const orderIndex = existingOrder ? orders.indexOf(existingOrder) : orders.length;
       newOrders[orderIndex] = data;
       setOrders(newOrders);
-      closeWorkspaceWithSavedChanges({
-        onWorkspaceClose: () => launchWorkspace('order-basket'),
-      });
+      closeWorkspace();
     },
-    [orders, setOrders, closeWorkspace, session?.currentProvider?.uuid, defaultValues, closeWorkspaceWithSavedChanges],
+    [orders, setOrders, closeWorkspace, session?.currentProvider?.uuid, defaultValues],
   );
 
   const cancelOrder = useCallback(() => {
     setOrders(orders.filter((order) => order.testType.conceptUuid !== defaultValues.testType.conceptUuid));
-    closeWorkspace({
-      onWorkspaceClose: () => launchWorkspace('order-basket'),
-    });
+    closeWorkspace();
   }, [closeWorkspace, orders, setOrders, defaultValues]);
 
   const onError = (errors: FieldErrors<ProcedureOrderBasketItem>) => {
@@ -163,10 +169,6 @@ export function ProceduresOrderForm({
       setShowErrorNotification(true);
     }
   };
-
-  useEffect(() => {
-    promptBeforeClosing(() => isDirty);
-  }, [isDirty, promptBeforeClosing]);
 
   const [showScheduleDate, setShowScheduleDate] = useState(false);
 
