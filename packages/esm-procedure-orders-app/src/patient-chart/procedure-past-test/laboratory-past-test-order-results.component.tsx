@@ -38,6 +38,7 @@ import { useGetPatientByUuid } from '../../utils/functions';
 import { ResourceRepresentation, type Result, getOrderColor } from '../patient-procedure-order-results.resource';
 import { useLaboratoryOrderResultsPages } from '../patient-procedure-order-results-table.resource';
 import { CardHeader } from '@openmrs/esm-patient-common-lib';
+import { type ConfigObject } from '../../config-schema';
 
 interface LaboratoryPastTestOrderResultsProps {
   patientUuid: string;
@@ -50,7 +51,7 @@ interface PrintProps {
 const LaboratoryPastTestOrderResults: React.FC<LaboratoryPastTestOrderResultsProps> = ({ patientUuid }) => {
   const { t } = useTranslation();
 
-  const { enableSendingLabTestsByEmail, laboratoryEncounterTypeUuid } = useConfig();
+  const { enableSendingLabTestsByEmail, laboratoryEncounterTypeUuid } = useConfig<ConfigObject>();
 
   const displayText = t('pastLaboratoryTestsDisplayTextTitle', 'Past Laboratory Tests');
   const { items, tableHeaders, isLoading, isError } = useLaboratoryOrderResultsPages({

@@ -16,6 +16,11 @@ export const configSchema = {
     _description: 'Test Order type UUID',
     _default: '52a447d3-a64a-11e3-9aeb-50e549534c5e',
   },
+  enableSpecimenIdAutoGeneration: {
+    _type: Type.Boolean,
+    _description: 'Enable specimen ID auto-generation',
+    _default: false,
+  },
   orders: {
     _type: Type.Object,
     _description: 'List of lab orderable concepts',
@@ -54,6 +59,56 @@ export const configSchema = {
     _description: 'The procedure concept class UUID',
     _default: '8d490bf4-c2cc-11de-8d13-0010c6dffd0f',
   },
+  careSettingUuid: {
+    _type: Type.String,
+    _description: 'The care setting UUID',
+    _default: '6f0c9a92-6f24-11e3-af88-005056821db0',
+  },
+  serviceConceptSetUuid: {
+    _type: Type.String,
+    _description: 'The service concept set UUID',
+    _default: '330c0ec6-0ac7-4b86-9c70-29d76f0ae20a',
+  },
+  otherReferralLocationUuid: {
+    _type: Type.String,
+    _description: 'The UUID for "Other" referral location',
+    _default: '3476fd97-71da-4e9c-bf57-2b6318dc0c9f',
+  },
+  minorProcedureCategoryUuid: {
+    _type: Type.String,
+    _description: 'The UUID for Minor procedure category',
+    _default: '3c3946b1-d71d-41b3-a2e4-2d755006200a',
+  },
+  majorProcedureCategoryUuid: {
+    _type: Type.String,
+    _description: 'The UUID for Major procedure category',
+    _default: '3798940f-87b8-464e-b36a-17da246f034e',
+  },
+  hivClinicNoIdentifierTypeUuid: {
+    _type: Type.String,
+    _description: 'The UUID for HIV Clinic No. identifier type',
+    _default: 'e1731641-30ab-102d-86b0-7a5022ba4115',
+  },
+  uicIdentifierTypeUuid: {
+    _type: Type.String,
+    _description: 'The UUID for Patient Unique Code (UIC) identifier type',
+    _default: '877169c4-92c6-4cc9-bf45-1ab95faea242',
+  },
+  procedureResultFormUuid: {
+    _type: Type.String,
+    _description: 'The UUID for the procedure result form',
+    _default: 'c6f3b5ad-b7eb-44ad-b212-fb26456e155b',
+  },
+  enableSendingLabTestsByEmail: {
+    _type: Type.Boolean,
+    _description: 'Enable sending lab tests by email',
+    _default: false,
+  },
+  laboratoryEncounterTypeUuid: {
+    _type: Type.String,
+    _description: 'The UUID for laboratory encounter type',
+    _default: '619d08fa-7186-11e3-bf7b-005056821db0',
+  },
 };
 
 export interface OrderReason {
@@ -78,6 +133,17 @@ export interface ConfigObject {
   procedureComplicationConceptUuid: string;
   procedureResultEncounterType: string;
   procedureResultEncounterRole: string;
+  careSettingUuid: string;
+  serviceConceptSetUuid: string;
+  otherReferralLocationUuid: string;
+  minorProcedureCategoryUuid: string;
+  majorProcedureCategoryUuid: string;
+  hivClinicNoIdentifierTypeUuid: string;
+  uicIdentifierTypeUuid: string;
+  procedureResultFormUuid: string;
+  enableSendingLabTestsByEmail: boolean;
+  laboratoryEncounterTypeUuid: string;
+  enableSpecimenIdAutoGeneration: boolean;
 }
 
 export const StringPath =

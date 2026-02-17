@@ -173,10 +173,9 @@ const TestTypeSearchResultItem: React.FC<TestTypeSearchResultItemProps> = ({
 }) => {
   const isTablet = useLayoutType() === 'tablet';
   const session = useSession();
-  const { orders, setOrders } = useOrderBasket<ProcedureOrderBasketItem>(
-    patient,
-    orderTypeUuid,
-    prepProceduresOrderPostData,
+  const config = useConfig<ConfigObject>();
+  const { orders, setOrders } = useOrderBasket<ProcedureOrderBasketItem>(patient, orderTypeUuid, (order, patientUuid, encounterUuid) =>
+    prepProceduresOrderPostData(order, patientUuid, encounterUuid, config),
   );
   const testTypeAlreadyInBasket = useMemo(
     () => orders?.some((order) => order.testType.conceptUuid === testType.conceptUuid),

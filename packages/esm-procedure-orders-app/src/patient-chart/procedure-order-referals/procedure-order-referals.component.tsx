@@ -36,6 +36,7 @@ import { useGetPatientByUuid } from '../../utils/functions';
 import { ResourceRepresentation, type Result, getOrderColor } from '../patient-procedure-order-results.resource';
 import { useLaboratoryOrderResultsPages } from '../patient-procedure-order-results-table.resource';
 import { CardHeader } from '@openmrs/esm-patient-common-lib';
+import { type ConfigObject } from '../../config-schema';
 import { mutate } from 'swr';
 
 interface LaboratoryOrderReferalResultsProps {
@@ -54,7 +55,7 @@ interface PrintProps {
 const LaboratoryOrderReferalResults: React.FC<LaboratoryOrderReferalResultsProps> = ({ patientUuid }) => {
   const { t } = useTranslation();
 
-  const { enableSendingLabTestsByEmail, laboratoryEncounterTypeUuid } = useConfig();
+  const { enableSendingLabTestsByEmail, laboratoryEncounterTypeUuid } = useConfig<ConfigObject>();
 
   const displayText = t('referralLaboratoryTestsDisplayTextTitle', 'Laboratory Referral Tests');
 

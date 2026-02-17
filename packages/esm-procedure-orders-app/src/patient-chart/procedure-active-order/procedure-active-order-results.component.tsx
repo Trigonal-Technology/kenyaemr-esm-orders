@@ -46,6 +46,7 @@ import { useGetPatientByUuid } from '../../utils/functions';
 import { ResourceRepresentation, type Result, getOrderColor } from '../patient-procedure-order-results.resource';
 import { useLaboratoryOrderResultsPages } from '../patient-procedure-order-results-table.resource';
 import { CardHeader } from '@openmrs/esm-patient-common-lib';
+import { type ConfigObject } from '../../config-schema';
 
 interface LaboratoryActiveTestOrderResultsProps {
   patientUuid: string;
@@ -58,7 +59,7 @@ interface PrintProps {
 const LaboratoryActiveTestOrderResults: React.FC<LaboratoryActiveTestOrderResultsProps> = ({ patientUuid }) => {
   const { t } = useTranslation();
 
-  const { enableSendingLabTestsByEmail, laboratoryEncounterTypeUuid } = useConfig();
+  const { enableSendingLabTestsByEmail, laboratoryEncounterTypeUuid, procedureResultFormUuid } = useConfig<ConfigObject>();
 
   const displayText = t('activelLaboratoryTestsDisplayTextTitle', 'Active Laboratory Tests');
 
@@ -132,7 +133,7 @@ const LaboratoryActiveTestOrderResults: React.FC<LaboratoryActiveTestOrderResult
       },
       formInfo: {
         encounterUuid: '',
-        formUuid: 'c6f3b5ad-b7eb-44ad-b212-fb26456e155b',
+        formUuid: procedureResultFormUuid,
       },
     });
   };

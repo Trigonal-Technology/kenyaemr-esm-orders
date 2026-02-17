@@ -4,6 +4,8 @@ import { formatDate, parseDate } from '@openmrs/esm-framework';
 import logoImg from '../../../assets/logo/moh_logo_without_word.png';
 import { type Identifier, type PatientResource } from '../../utils/functions';
 import { useTranslation } from 'react-i18next';
+import { useConfig } from '@openmrs/esm-framework';
+import { type ConfigObject } from '../../config-schema';
 import PrintResultsTable from './print-results-table.component';
 import { type Result } from '../patient-procedure-order-results.resource';
 
@@ -13,6 +15,7 @@ interface PrintResultsSummaryProps {
 }
 
 const PrintResultsSummary: React.FC<PrintResultsSummaryProps> = ({ encounterResponse, patient }) => {
+  const config = useConfig<ConfigObject>();
   const filteredItems = encounterResponse.obs.filter((ob) => ob?.order?.type === 'testorder');
 
   const results = useMemo(() => {
@@ -81,16 +84,16 @@ const PrintResultsSummary: React.FC<PrintResultsSummaryProps> = ({ encounterResp
             HIV Clinic No. :
             {patient?.identifiers?.length
               ? patient?.identifiers?.find((identifier: Identifier) => {
-                  return identifier?.identifierType.uuid === 'e1731641-30ab-102d-86b0-7a5022ba4115';
-                })?.identifier
+                return identifier?.identifierType.uuid === config.hivClinicNoIdentifierTypeUuid;
+              })?.identifier
               : '--'}
           </span>
           <span style={{ margin: '5px', fontSize: '10px' }}>
             Patient Unique Code (UIC). :
             {patient?.identifiers?.length > 0
               ? patient?.identifiers?.find((identifier: Identifier) => {
-                  return identifier?.identifierType?.uuid === '877169c4-92c6-4cc9-bf45-1ab95faea242';
-                })?.identifier
+                return identifier?.identifierType?.uuid === config.uicIdentifierTypeUuid;
+              })?.identifier
               : '--'}
           </span>
         </div>

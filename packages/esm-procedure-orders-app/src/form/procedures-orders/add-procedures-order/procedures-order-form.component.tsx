@@ -10,7 +10,7 @@ import {
   type DefaultWorkspaceProps,
   launchWorkspace,
 } from '@openmrs/esm-framework';
-import { careSettingUuid, prepProceduresOrderPostData, useOrderReasons, useConceptById, type Concept } from '../api';
+import { prepProceduresOrderPostData, useOrderReasons, useConceptById, type Concept } from '../api';
 import {
   Button,
   ButtonSet,
@@ -26,7 +26,7 @@ import {
   NumberInput,
 } from '@carbon/react';
 import { useTranslation } from 'react-i18next';
-import { categoryItems, priorityOptions } from './procedures-order';
+import { priorityOptions } from './procedures-order';
 import { useProceduresTypes } from './useProceduresTypes';
 import { Controller, type FieldErrors, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -63,7 +63,10 @@ export function ProceduresOrderForm({
   const isTablet = useLayoutType() === 'tablet';
   const session = useSession();
   const { orderConfigObject, isLoading: isLoadingOrderConfig, error: errorFetchingOrderConfig } = useOrderConfig();
-  const { orders, setOrders } = useOrderBasket<ProcedureOrderBasketItem>(patient, orderTypeUuid, prepProceduresOrderPostData);
+  const config = useConfig<ConfigObject>();
+  const { orders, setOrders } = useOrderBasket<ProcedureOrderBasketItem>(patient, orderTypeUuid, (order, patientUuid, encounterUuid) =>
+    prepProceduresOrderPostData(order, patientUuid, encounterUuid, config),
+  );
   const { testTypes, isLoading: isLoadingTestTypes, error: errorLoadingTestTypes } = useProceduresTypes();
   const [showErrorNotification, setShowErrorNotification] = useState(false);
   const {
@@ -76,7 +79,6 @@ export function ProceduresOrderForm({
     isLoading: isLoadingSpecimenTypeItems,
     isError: errorFetchingSpecimenTypeItems,
   } = useConceptById('162476AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA');
-  const config = useConfig<ConfigObject>();
   const orderReasonRequired = (
     config.labTestsWithOrderReasons?.find((c) => c.labTestUuid === initialOrder?.testType?.conceptUuid) || {}
   ).required;
@@ -146,7 +148,7 @@ export function ProceduresOrderForm({
   const handleFormSubmission = useCallback(
     (data: ProcedureOrderBasketItem) => {
       data.action = 'NEW';
-      data.careSetting = careSettingUuid;
+      data.careSetting = config.careSettingUuid;
       data.orderer = session.currentProvider.uuid;
       data.patient = patient;
       const newOrders = [...orders];
@@ -222,8 +224,14 @@ export function ProceduresOrderForm({
                       size="lg"
                       id="categoryInput"
                       titleText={t('operationCategory', 'Operation category')}
-                      selectedItem={categoryItems.find((option) => option.value === value) || null}
-                      items={categoryItems}
+                      selectedItem={[
+                        { value: config.minorProcedureCategoryUuid, label: 'Minor' },
+                        { value: config.majorProcedureCategoryUuid, label: 'Major' },
+                      ].find((option) => option.value === value) || null}
+                      items={[
+                        { value: config.minorProcedureCategoryUuid, label: 'Minor' },
+                        { value: config.majorProcedureCategoryUuid, label: 'Major' },
+                      ]}
                       placeholder={t('categoryPlaceholder', 'Select category')}
                       onBlur={onBlur}
                       onChange={({ selectedItem }) => onChange(selectedItem?.value || '')}

@@ -22,7 +22,7 @@ import styles from './procedures-order-basket-panel.scss';
  * Designs: https://app.zeplin.io/project/60d59321e8100b0324762e05/screen/648c44d9d4052c613e7f23da
  */
 export function ProceduresOrderBasketPanelExtension({ patient }: OrderBasketExtensionProps) {
-  const { orders } = useConfig<ConfigObject>();
+  const config = useConfig<ConfigObject>();
   const { t } = useTranslation();
 
   const launchProceduresOrderForm = useCallback((orderTypeUuid: string, order?: ProcedureOrderBasketItem) => {
@@ -32,7 +32,7 @@ export function ProceduresOrderBasketPanelExtension({ patient }: OrderBasketExte
   const allOrderTypes: any = [
     {
       label: t('procedureOrders', 'Procedure orders'),
-      orderTypeUuid: '4237a01f-29c5-4167-9d8e-96d6e590aa33',
+      orderTypeUuid: config.procedureOrderTypeUuid,
       icon: 'omrs-icon-lab-order',
     },
   ];
@@ -58,16 +58,21 @@ interface ProceduresOrderBasketPanelProps extends OrderTypeConfig {
   launchProceduresOrderForm(orderTypeUuid: string, order?: ProcedureOrderBasketItem): void;
 }
 
-function ProceduresOrderBasketPanel({ orderTypeUuid, label, icon, patient, launchProceduresOrderForm }: ProceduresOrderBasketPanelProps) {
+function ProceduresOrderBasketPanel({
+  orderTypeUuid,
+  label,
+  icon,
+  patient,
+  launchProceduresOrderForm,
+}: ProceduresOrderBasketPanelProps) {
   const { t } = useTranslation();
   const isTablet = useLayoutType() === 'tablet';
   const responsiveSize = isTablet ? 'md' : 'sm';
   const isDefaultLabOrder = icon === 'omrs-icon-lab-order';
   const { orderType, isLoadingOrderType } = useOrderType(orderTypeUuid);
-  const { orders, setOrders } = useOrderBasket<ProcedureOrderBasketItem>(
-    patient,
-    orderTypeUuid,
-    prepProceduresOrderPostData,
+  const config = useConfig<ConfigObject>();
+  const { orders, setOrders } = useOrderBasket<ProcedureOrderBasketItem>(patient, orderTypeUuid, (order, patientUuid, encounterUuid) =>
+    prepProceduresOrderPostData(order, patientUuid, encounterUuid, config),
   );
   const [isExpanded, setIsExpanded] = useState(orders.length > 0);
   const {

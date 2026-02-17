@@ -13,7 +13,7 @@ export interface ProcedureOrderPost extends OrderPost {
   specimenType?: string;
   numberOfRepeats?: string;
 }
-export const careSettingUuid = '6f0c9a92-6f24-11e3-af88-005056821db0';
+// export const careSettingUuid = '6f0c9a92-6f24-11e3-af88-005056821db0';
 /**
  * SWR-based data fetcher for patient orders.
  *
@@ -21,7 +21,9 @@ export const careSettingUuid = '6f0c9a92-6f24-11e3-af88-005056821db0';
  * @param status Allows fetching either all orders or only active orders.
  */
 export function usePatientLabOrders(patientUuid: string, status: 'ACTIVE' | 'any') {
-  const { labOrderTypeUuid: labOrderTypeUUID } = (useConfig() as ConfigObject).orders;
+  const config = useConfig() as ConfigObject;
+  const { labOrderTypeUuid: labOrderTypeUUID } = config.orders;
+  const { careSettingUuid } = config;
   const ordersUrl = `${restBaseUrl}/order?patient=${patientUuid}&careSetting=${careSettingUuid}&status=${status}&orderType=${labOrderTypeUUID}`;
 
   const { data, error, isLoading, isValidating } = useSWR<FetchResponse<PatientOrderFetchResponse>, Error>(
@@ -62,9 +64,9 @@ export function useOrderReasons(conceptUuids: Array<string>) {
   const ob = data?.data;
   const orderReasons = ob
     ? Object.entries(ob).map(([key, value]) => ({
-        uuid: value.uuid,
-        display: value.display,
-      }))
+      uuid: value.uuid,
+      display: value.display,
+    }))
     : [];
 
   if (error) {
@@ -82,7 +84,9 @@ export function prepProceduresOrderPostData(
   order: ProcedureOrderBasketItem,
   patientUuid: string,
   encounterUuid: string,
+  config: ConfigObject,
 ): ProcedureOrderPost {
+  const { careSettingUuid, procedureOrderTypeUuid } = config;
   let payload = {};
   if (order.action === 'NEW' || order.action === 'RENEW') {
     payload = {
@@ -97,7 +101,7 @@ export function prepProceduresOrderPostData(
       numberOfRepeats: order.numberOfRepeats,
       urgency: order.urgency,
       commentToFulfiller: order.commentsToFulfiller,
-      orderType: '4237a01f-29c5-4167-9d8e-96d6e590aa33',
+      orderType: procedureOrderTypeUuid,
       instructions: order.instructions,
       orderReason: order.orderReason,
       orderReasonNonCoded: order.orderReasonNonCoded,

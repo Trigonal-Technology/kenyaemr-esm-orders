@@ -21,6 +21,7 @@ import {
   useSpecimenTypes,
 } from './add-to-worklist-dialog.resource';
 import { type Order } from '../../types';
+import { type ConfigObject } from '../../config-schema';
 
 interface AddToWorklistDialogProps {
   queueId;
@@ -49,7 +50,7 @@ const AddToWorklistDialog: React.FC<AddToWorklistDialogProps> = ({ queueId, orde
 
   const [externalReferralName, setExternalReferralName] = useState('');
 
-  const config = useConfig();
+  const config = useConfig<ConfigObject>();
 
   const pickProcedureRequestQueue = async (event) => {
     event.preventDefault();
@@ -224,7 +225,7 @@ const AddToWorklistDialog: React.FC<AddToWorklistDialogProps> = ({ queueId, orde
                   </section>
 
                   <section className={styles.section}>
-                    {selectedReferral === '3476fd97-71da-4e9c-bf57-2b6318dc0c9f' && (
+                    {selectedReferral === config.otherReferralLocationUuid && (
                       <div
                         style={{
                           display: 'flex',
