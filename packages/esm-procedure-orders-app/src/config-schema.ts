@@ -109,6 +109,11 @@ export const configSchema = {
     _description: 'The UUID for laboratory encounter type',
     _default: '619d08fa-7186-11e3-bf7b-005056821db0',
   },
+  procedureReportFormUuid: {
+    _type: Type.String,
+    _description: 'The UUID for the procedure report form',
+    _default: 'dc3c02db-26b5-3731-8288-0319e5a33109',
+  },
 };
 
 export interface OrderReason {
@@ -144,6 +149,7 @@ export interface ConfigObject {
   enableSendingLabTestsByEmail: boolean;
   laboratoryEncounterTypeUuid: string;
   enableSpecimenIdAutoGeneration: boolean;
+  procedureReportFormUuid: string;
 }
 
 export const StringPath =

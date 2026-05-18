@@ -27,10 +27,10 @@ const NotDoneList: React.FC<WorklistProps> = ({ fulfillerStatus }) => {
             showStatus={true}
             showOrderType={true}
             showStartButton={false}
-            title={t('notDoneList', 'Not Done List')}
+            title={t('notDoneList', 'Declined List')}
             actions={[
               {
-                actionName: 'procedure-reject-reason-modal',
+                actionName: 'reject-reason-message',
               },
             ]}
           />

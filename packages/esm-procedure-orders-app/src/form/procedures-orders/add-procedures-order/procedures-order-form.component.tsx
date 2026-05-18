@@ -10,6 +10,8 @@ import {
   type DefaultWorkspaceProps,
   launchWorkspace,
 } from '@openmrs/esm-framework';
+import { postOrder, showOrderSuccessToast } from '@openmrs/esm-patient-common-lib';
+import { usePatientProcedureOrders } from '../../../hooks/usePatientProcedureOrders';
 import { prepProceduresOrderPostData, useOrderReasons, useConceptById, type Concept } from '../api';
 import {
   Button,
@@ -49,6 +51,7 @@ export interface ProceduresOrderFormProps {
   orderTypeUuid: string;
   setHasUnsavedChanges: (hasUnsavedChanges: boolean) => void;
   patient: fhir.Patient;
+  visit: any;
 }
 
 export function ProceduresOrderForm({
@@ -58,6 +61,7 @@ export function ProceduresOrderForm({
   orderTypeUuid,
   setHasUnsavedChanges,
   patient,
+  visit,
 }: ProceduresOrderFormProps) {
   const { t } = useTranslation();
   const isTablet = useLayoutType() === 'tablet';
@@ -67,6 +71,7 @@ export function ProceduresOrderForm({
   const { orders, setOrders } = useOrderBasket<ProcedureOrderBasketItem>(patient, orderTypeUuid, (order, patientUuid, encounterUuid) =>
     prepProceduresOrderPostData(order, patientUuid, encounterUuid, config),
   );
+  const { mutate: mutateOrders } = usePatientProcedureOrders(patient?.id);
   const { testTypes, isLoading: isLoadingTestTypes, error: errorLoadingTestTypes } = useProceduresTypes();
   const [showErrorNotification, setShowErrorNotification] = useState(false);
   const {
@@ -139,6 +144,10 @@ export function ProceduresOrderForm({
     },
   });
 
+  useEffect(() => {
+    setHasUnsavedChanges(isDirty);
+  }, [isDirty, setHasUnsavedChanges]);
+
   const orderReasonUuids =
     (config.labTestsWithOrderReasons?.find((c) => c.labTestUuid === defaultValues?.testType?.conceptUuid) || {})
       .orderReasons || [];
@@ -147,24 +156,85 @@ export function ProceduresOrderForm({
 
   const handleFormSubmission = useCallback(
     (data: ProcedureOrderBasketItem) => {
-      data.action = 'NEW';
+      data.action = initialOrder?.action || 'NEW';
+      data.previousOrder = initialOrder?.previousOrder;
       data.careSetting = config.careSettingUuid;
       data.orderer = session.currentProvider.uuid;
       data.patient = patient;
+      data.display = data.testType.label;
       const newOrders = [...orders];
-      const existingOrder = orders.find((order) => order.testType.conceptUuid == defaultValues.testType.conceptUuid);
-      const orderIndex = existingOrder ? orders.indexOf(existingOrder) : orders.length;
-      newOrders[orderIndex] = data;
+      const existingOrderIndex = orders.findIndex((order) => {
+        const orderConceptUuid = order?.testType?.conceptUuid;
+        const initialConceptUuid = initialOrder?.testType?.conceptUuid;
+        return orderConceptUuid === initialConceptUuid || orderConceptUuid === data?.testType?.conceptUuid;
+      });
+
+      if (existingOrderIndex > -1) {
+        newOrders[existingOrderIndex] = data;
+      } else {
+        newOrders.push(data);
+      }
+
+      setHasUnsavedChanges(false);
       setOrders(newOrders);
-      closeWorkspace();
+      closeWorkspace({ discardUnsavedChanges: true });
     },
-    [orders, setOrders, closeWorkspace, session?.currentProvider?.uuid, defaultValues],
+    [orders, setOrders, closeWorkspace, session?.currentProvider?.uuid, initialOrder, config.careSettingUuid, patient, setHasUnsavedChanges],
+  );
+
+  const submitProcedureOrderToServer = useCallback(
+    async (data: ProcedureOrderBasketItem) => {
+      const finalizedOrder: any = {
+        ...initialOrder,
+        ...data,
+        action: 'REVISE',
+        orderer: session.currentProvider.uuid,
+        patient: patient,
+      };
+
+      const encounterUuid = finalizedOrder.encounterUuid || visit?.uuid || visit?.encounter?.uuid;
+
+      if (finalizedOrder) {
+        const postData = prepProceduresOrderPostData(
+          finalizedOrder,
+          patient.id,
+          encounterUuid,
+          config,
+        );
+
+        try {
+          const response = await postOrder(postData);
+          if (response) {
+            setOrders(orders.filter((order) => order.testType.conceptUuid !== initialOrder.testType.conceptUuid));
+            mutateOrders();
+            showOrderSuccessToast(moduleName, [finalizedOrder]);
+            setHasUnsavedChanges(false);
+            closeWorkspace({ discardUnsavedChanges: true });
+          }
+        } catch (error) {
+          setShowErrorNotification(true);
+        }
+      }
+    },
+    [
+      initialOrder,
+      session.currentProvider.uuid,
+      patient,
+      visit,
+      config,
+      orders,
+      setOrders,
+      mutateOrders,
+      setHasUnsavedChanges,
+      closeWorkspace,
+    ],
   );
 
   const cancelOrder = useCallback(() => {
     setOrders(orders.filter((order) => order.testType.conceptUuid !== defaultValues.testType.conceptUuid));
+    setHasUnsavedChanges(false);
     closeWorkspace();
-  }, [closeWorkspace, orders, setOrders, defaultValues]);
+  }, [closeWorkspace, orders, setOrders, defaultValues, initialOrder, setHasUnsavedChanges]);
 
   const onError = (errors: FieldErrors<ProcedureOrderBasketItem>) => {
     if (errors) {
@@ -185,7 +255,7 @@ export function ProceduresOrderForm({
           subtitle={t('tryReopeningTheForm', 'Please try launching the form again')}
         />
       )}
-      <Form className={styles.orderForm} onSubmit={handleSubmit(handleFormSubmission, onError)} id="procedureOrderForm">
+      <Form className={styles.orderForm} onSubmit={handleSubmit(initialOrder?.action === 'REVISE' ? submitProcedureOrderToServer : handleFormSubmission, onError)} id="procedureOrderForm">
         <div className={styles.form}>
           <ExtensionSlot name="top-of-procedure-order-form-slot" state={{ order: initialOrder }} />
           <Grid className={styles.gridRow}>

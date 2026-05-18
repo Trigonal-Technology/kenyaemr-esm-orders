@@ -39,7 +39,7 @@ const ListOrderDetails: React.FC<ListOrdersDetailsProps> = ({ groupedOrders, sho
       }));
   }, [orders]);
 
-  const { diagnoses, isLoading } = usePatientDiagnosis(orders[0]?.patient?.uuid);
+  const { diagnoses, isLoading } = usePatientDiagnosis(orders?.[0]?.patient?.uuid);
   if (isLoading) {
     return <InlineLoading status="active" description={t('loading', 'Loading...')} />;
   }

@@ -1,12 +1,16 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@carbon/react';
-import { showModal, launchWorkspace } from '@openmrs/esm-framework';
-import { type Order } from '@openmrs/esm-patient-common-lib';
-import OrderActionExtension from './order-action-extension.component';
+import { Button, Modal, Tile } from '@carbon/react';
+import {
+  showModal,
+  ExtensionSlot,
+  openmrsFetch,
+  restBaseUrl,
+  useConfig,
+} from '@openmrs/esm-framework';
+import { mutate } from 'swr';
 import { type Result } from '../../../../types';
-import { launchOverlay } from '../../../../components/overlay/hook';
-import PostProcedureForm from '../../../../form/post-procedures/post-procedure-form.component';
+import { type ConfigObject } from '../../../../config-schema';
 import styles from './action-button.scss';
 
 type ActionButtonProps = {
@@ -15,20 +19,18 @@ type ActionButtonProps = {
   };
   order: Result;
   patientUuid: string;
+  onOpenForm?: () => void;
 };
 
-const ActionButton: React.FC<ActionButtonProps> = ({ action, order, patientUuid }) => {
+const ActionButton: React.FC<ActionButtonProps> = ({ action, order, patientUuid, onOpenForm }) => {
   const { t } = useTranslation();
 
   const handleOpenProcedureResultForm = () => {
-    launchWorkspace('procedure-report-form', {
-      patientUuid,
-      order,
-    });
+    onOpenForm?.();
   };
   switch (action.actionName) {
     case 'add-procedure-to-worklist-dialog':
-    // return <OrderActionExtension order={order as unknown as Order} />;
+      // return <OrderActionExtension order={order as unknown as Order} />;
       return (
         <Button
           kind='primary'
@@ -72,10 +74,93 @@ const ActionButton: React.FC<ActionButtonProps> = ({ action, order, patientUuid 
           )}
         </Button>
       );
+    
+    case 'reject-reason-message':
+      return (
+          <section className={styles.section}>
+            <b />
+            <Tile>
+              <p>
+                <b><strong>Rejection Reason:</strong></b>
+              </p>
+              <p className={styles.instructions}>{order.fulfillerComment}</p>
+            </Tile>
+          </section>
+        )
 
     default:
       return null;
   }
 };
 
-export default ActionButton;
+const ActionButtonContainer: React.FC<ActionButtonProps> = (props) => {
+  const { t } = useTranslation();
+  const { patientUuid, order } = props;
+  const { procedureReportFormUuid } = useConfig<ConfigObject>();
+  const [showForm, setShowForm] = useState(false);
+
+  const handleOpenProcedureResultForm = () => {
+    setShowForm(true);
+  };
+
+  const handleSubmitResponse = useCallback(() => {
+    return openmrsFetch(`${restBaseUrl}/order/${order.uuid}/fulfillerdetails`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: {
+        fulfillerStatus: 'COMPLETED',
+        fulfillerComment: '',
+      },
+    })
+      .then(() => {
+        mutate((key) => typeof key === 'string' && key.includes('/order'));
+        setShowForm(false);
+      })
+      .catch((error) => {
+        console.error('Error updating fulfiller details:', error);
+        setShowForm(false);
+      });
+  }, [order.uuid]);
+
+  return (
+    <div className={styles.actionButtonContainer}>
+      <ActionButton {...props} onOpenForm={handleOpenProcedureResultForm} />
+      {showForm && (
+        <Modal
+          open={showForm}
+          onRequestClose={() => setShowForm(false)}
+          modalHeading={t('procedureResultForm', 'Procedure Result Form')}
+          passiveModal
+          size="lg">
+          <ExtensionSlot
+            name="form-widget-slot"
+            state={{
+              view: 'form',
+              formUuid: procedureReportFormUuid,
+              patientUuid,
+              patient: {
+                ...order.patient,
+                id: order.patient?.uuid,
+              },
+              encounterUuid: '',
+              visitUuid: null,
+              additionalProps: {
+                mode: 'enter',
+              },
+              showDiscardSubmitButtons: true,
+              handlePostResponse: handleSubmitResponse,
+              closeWorkspace: () => setShowForm(false),
+              closeWorkspaceWithSavedChanges: handleSubmitResponse,
+              promptBeforeClosing: () => {},
+              setHasUnsavedChanges: () => {},
+            }}
+          />
+        </Modal>
+      )}
+    </div>
+  );
+};
+
+export default ActionButtonContainer;

@@ -14,7 +14,7 @@ const ProcedureRejectReasonModal: React.FC<ProcedureRejectReasonModalProps> = ({
 
   return (
     <div>
-      <ModalHeader closeModal={closeModal} title={t('reasonNotDone', 'Reason Not Done')} />
+      <ModalHeader closeModal={closeModal} title={t('reasonNotDone', 'Declined reason')} />
       <ModalBody>
         <div className={styles.modalBody}>
           <section className={styles.section}>

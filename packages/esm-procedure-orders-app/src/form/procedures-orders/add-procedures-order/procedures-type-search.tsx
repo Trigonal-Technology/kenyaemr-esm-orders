@@ -21,7 +21,7 @@ export interface TestTypeSearchProps {
   visit: Visit;
 }
 
-export function TestTypeSearch({ openLabForm, patient, orderTypeUuid, closeWorkspace }: TestTypeSearchProps) {
+export function TestTypeSearch({ openLabForm, patient, orderTypeUuid, closeWorkspace, visit }: TestTypeSearchProps) {
   const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm);
@@ -56,6 +56,7 @@ export function TestTypeSearch({ openLabForm, patient, orderTypeUuid, closeWorks
         patient={patient}
         orderTypeUuid={orderTypeUuid}
         closeWorkspace={closeWorkspace}
+        visit={visit}
       />
     </>
   );
@@ -68,6 +69,7 @@ interface TestTypeSearchResultsProps {
   patient: any;
   orderTypeUuid: string;
   closeWorkspace: Workspace2DefinitionProps['closeWorkspace'];
+  visit: Visit;
 }
 
 function TestTypeSearchResults({
@@ -77,6 +79,7 @@ function TestTypeSearchResults({
   patient,
   orderTypeUuid,
   closeWorkspace,
+  visit,
 }: TestTypeSearchResultsProps) {
   const { t } = useTranslation();
   const isTablet = useLayoutType() === 'tablet';
@@ -129,6 +132,7 @@ function TestTypeSearchResults({
                 patient={patient}
                 orderTypeUuid={orderTypeUuid}
                 closeWorkspace={closeWorkspace}
+                visit={visit}
               />
             ))}
           </div>
@@ -162,6 +166,7 @@ interface TestTypeSearchResultItemProps {
   patient: any;
   orderTypeUuid: string;
   closeWorkspace: Workspace2DefinitionProps['closeWorkspace'];
+  visit: Visit;
 }
 
 const TestTypeSearchResultItem: React.FC<TestTypeSearchResultItemProps> = ({
@@ -170,6 +175,7 @@ const TestTypeSearchResultItem: React.FC<TestTypeSearchResultItemProps> = ({
   patient,
   orderTypeUuid,
   closeWorkspace,
+  visit,
 }) => {
   const isTablet = useLayoutType() === 'tablet';
   const session = useSession();
@@ -184,7 +190,7 @@ const TestTypeSearchResultItem: React.FC<TestTypeSearchResultItemProps> = ({
 
   const createLabOrder = useCallback(
     (testType: ProceduresType) => {
-      return createEmptyLabOrder(testType, session.currentProvider.uuid, undefined);
+      return createEmptyLabOrder(testType, session.currentProvider.uuid, visit);
     },
     [session.currentProvider?.uuid],
   );
@@ -196,7 +202,7 @@ const TestTypeSearchResultItem: React.FC<TestTypeSearchResultItemProps> = ({
     labOrder.isOrderIncomplete = true;
     labOrder.patient = patient;
     setOrders([...orders, labOrder]);
-    closeWorkspace();
+    // closeWorkspace({ discardUnsavedChanges: true });
   }, [orders, setOrders, createLabOrder, testType, closeWorkspace]);
 
   const removeFromBasket = useCallback(() => {

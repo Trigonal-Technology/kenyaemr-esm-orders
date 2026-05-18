@@ -30,6 +30,26 @@
   flex-direction: column;
 }
 
+.contentContainer {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.buttonSet {
+  padding: layout.$spacing-05;
+  background-color: $ui-01;
+  border-top: 1px solid $ui-03;
+}
+
+.actionButton {
+  min-width: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 // .patientHeader {
 //   padding: spacing.$spacing-03 spacing.$spacing-05 spacing.$spacing-06;
 //   background-color: $ui-01;

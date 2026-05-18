@@ -8,7 +8,7 @@
     {
       "component": "procedureDashboardLink",
       "name": "procedure-dashboard-link",
-      "slot": "order-basket-slot",
+      "slot": "homepage-dashboard-slot",
       "order": 0,
       "meta": {
         "name": "procedure",
@@ -59,7 +59,7 @@
       "component": "notDoneTileComponent",
       "meta": {
         "name": "notDoneTileSlot",
-        "title": "Not Done"
+        "title": "Declined"
       }
     },
     {
@@ -95,7 +95,7 @@
       "component": "notDoneProceduresTabComponent",
       "meta": {
         "name": "proceduresPanelSlot",
-        "title": "Not Done"
+        "title": "Declined"
       }
     },
     {
@@ -133,6 +133,25 @@
       "name": "procedure-results-component",
       "component": "procedureResultsComponent",
       "slot": "ewf-procedures-results-slot"
+    },
+    {
+      "name": "patient-procedure-order-summary-dashboard",
+      "component": "procedureOrderDashboardLink",
+      "slot": "patient-chart-dashboard-slot",
+      "meta": {
+        "slot": "patient-chart-procedure-order-dashboard-slot",
+        "path": "procedureOrders",
+        "hideDashboardTitle": true
+      },
+      "order": 4
+    },
+    {
+      "name": "patient-procedure-order-dashboard",
+      "component": "procedureOrdersSummary",
+      "slot": "patient-chart-procedure-order-dashboard-slot",
+      "meta": {
+        "fullWidth": false
+      }
     }
   ],
   "workspaces": [

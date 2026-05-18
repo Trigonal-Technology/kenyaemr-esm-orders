@@ -15,6 +15,9 @@ import PostProcedureForm from './form/post-procedures/post-procedure-form.compon
 import PrintPreviewModal from './print/print-procedure-results.component';
 import Procedure from './procedure.component';
 import SearchPatientWorkspace from './form/search-patient-workspace/search-patient.workspace';
+import { procedureordersDashboardMeta } from './dashboard-meta';
+import { createDashboardLink } from '@openmrs/esm-patient-common-lib';
+import ProceduresOrdersSummary from './shared/ui/common/procedures-orders-summary.component';
 
 const moduleName = '@kenyaemr/esm-procedure-orders-app';
 
@@ -40,6 +43,14 @@ export const procedureDashboardLink = getSyncLifecycle(
   }),
   options,
 );
+
+export const procedureOrderDashboardLink =
+  getSyncLifecycle(
+    createDashboardLink({
+      ...procedureordersDashboardMeta,
+    }),
+    options,
+  );
 
 // Modals
 export const rejectProcedureOrderDialogComponent = getSyncLifecycle(rejectProcedureOrderDialog, options);
@@ -67,3 +78,4 @@ export const procedureResultsComponent = getAsyncLifecycle(
   options,
 );
 export const procedureOrderSearchPatientWorkspace = getSyncLifecycle(SearchPatientWorkspace, options);
+export const procedureOrdersSummary = getSyncLifecycle(ProceduresOrdersSummary, options);

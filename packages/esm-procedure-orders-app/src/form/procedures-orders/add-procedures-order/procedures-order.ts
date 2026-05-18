@@ -12,6 +12,6 @@ export function createEmptyLabOrder(testType: ProceduresType, orderer: string, v
     action: 'NEW',
     display: testType.label,
     testType,
-    visit: undefined,
+    visit,
   };
 }
