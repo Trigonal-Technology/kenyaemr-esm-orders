@@ -23,7 +23,7 @@ export function usePatientProcedureOrders(
     const { mutate: globalMutate } = useSWRConfig();
 
     const responseFormat =
-        'custom:(uuid,orderNumber,orderType:(uuid),patient:(uuid,display,identifiers,person:(uuid,display,age,gender)),concept:(uuid,display,conceptClass:(uuid,display)),encounter:(uuid,display),action,careSetting,orderer:ref,urgency,instructions,orderReasonNonCoded,orderReason,bodySite,laterality,commentToFulfiller,display,fulfillerStatus,dateStopped,scheduledDate,dateActivated,fulfillerComment)';
+        'custom:(uuid,orderNumber,orderType:(uuid),patient:(uuid,display,identifiers,person:(uuid,display,age,gender)),concept:(uuid,display,conceptClass:(uuid,display)),encounter:(uuid,display),action,careSetting,orderer:ref,urgency,instructions,orderReasonNonCoded,orderReason,bodySite,laterality,commentToFulfiller,display,fulfillerStatus,dateStopped,scheduledDate,dateActivated,fulfillerComment,numberOfRepeats)';
 
     const baseUrl =
         startDate && endDate

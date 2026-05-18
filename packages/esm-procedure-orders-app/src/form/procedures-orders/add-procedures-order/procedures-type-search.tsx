@@ -42,8 +42,8 @@ export function TestTypeSearch({ openLabForm, patient, orderTypeUuid, closeWorks
         <Search
           autoFocus
           size="lg"
-          placeholder={t('searchFieldPlaceholder', 'Search for an imaging test')}
-          labelText={t('searchFieldPlaceholder', 'Search for an imaging test')}
+          placeholder={t('searchFieldPlaceholder', 'Search for a procedure')}
+          labelText={t('searchFieldPlaceholder', 'Search for a procedure')}
           onChange={handleSearchTermChange}
           ref={searchInputRef}
           value={searchTerm}
@@ -192,18 +192,20 @@ const TestTypeSearchResultItem: React.FC<TestTypeSearchResultItemProps> = ({
     (testType: ProceduresType) => {
       return createEmptyLabOrder(testType, session.currentProvider.uuid, visit);
     },
-    [session.currentProvider?.uuid],
+    [session.currentProvider?.uuid, visit],
   );
 
   const { t } = useTranslation();
 
   const addToBasket = useCallback(() => {
     const labOrder = createLabOrder(testType);
-    labOrder.isOrderIncomplete = true;
     labOrder.patient = patient;
+    labOrder.urgency = 'ROUTINE';
+    labOrder.numberOfRepeats = '1';
+    labOrder.orderer = session.currentProvider?.uuid;
     setOrders([...orders, labOrder]);
     // closeWorkspace({ discardUnsavedChanges: true });
-  }, [orders, setOrders, createLabOrder, testType, closeWorkspace]);
+  }, [orders, setOrders, createLabOrder, testType, closeWorkspace, patient, session?.currentProvider?.uuid]);
 
   const removeFromBasket = useCallback(() => {
     setOrders(orders.filter((order) => order.testType.conceptUuid !== testType.conceptUuid));

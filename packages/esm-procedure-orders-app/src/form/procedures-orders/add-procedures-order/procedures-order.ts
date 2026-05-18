@@ -2,9 +2,9 @@ import { type ProcedureOrderBasketItem } from '../../../types';
 import { type ProceduresType } from './useProceduresTypes';
 
 export const priorityOptions = [
-  { value: 'STAT', label: 'Emergency' },
-  { value: 'ROUTINE', label: 'Elective' },
-  // { value: 'ON_SCHEDULED_DATE', label: 'Scheduled' },
+  { value: 'ROUTINE', label: 'Routine' },
+  { value: 'STAT', label: 'Stat' },
+  { value: 'ON_SCHEDULED_DATE', label: 'Scheduled' },
 ];
 
 export function createEmptyLabOrder(testType: ProceduresType, orderer: string, visit): ProcedureOrderBasketItem {
@@ -13,5 +13,6 @@ export function createEmptyLabOrder(testType: ProceduresType, orderer: string, v
     display: testType.label,
     testType,
     visit,
+    orderer,
   };
 }

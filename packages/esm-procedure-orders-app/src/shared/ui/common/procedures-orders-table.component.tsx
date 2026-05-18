@@ -439,8 +439,7 @@ function OrderActions({
             orderReason: orderItem.orderReason?.uuid,
             orderReasonNonCoded: orderItem.orderReasonNonCoded ?? undefined,
             laterality: orderItem.laterality ?? undefined,
-            // bodySite: orderItem.bodySite?.uuid ?? undefined,
-            scheduledDate: orderItem.scheduledDate ? new Date(orderItem.scheduledDate) : undefined,
+            scheduleDate: orderItem.scheduledDate ? new Date(orderItem.scheduledDate) : undefined,
             numberOfRepeats: orderItem.numberOfRepeats ?? undefined,
             frequency: orderItem.frequency ?? undefined,
             specimenSource: orderItem.specimenSource?.uuid ?? undefined,
@@ -503,17 +502,12 @@ function ProcedureOrderDetails({ order, patientId }: ProcedureOrderDetailsProps)
                     value={capitalize(order.instructions) || t('noInstructions', 'No instructions provided')}
                 />
                 <OrderDetail
-                    label={t('orderReason', 'Order reason')}
-                    value={capitalize(order.orderReasonNonCoded || '--')}
+                    label={t('numberOfRepeats', 'Number of repeats')}
+                    value={order.numberOfRepeats || '--'}
                 />
-                <OrderDetail label={t('laterality', 'Laterality')} value={capitalize(order.laterality || '--')} />
                 <OrderDetail
                     label={t('scheduledDate', 'Scheduled date')}
                     value={order.scheduledDate ? formatDate(new Date(order.scheduledDate)) : '--'}
-                />
-                <OrderDetail
-                    label={t('fulfillerComment', 'Fulfiller comment')}
-                    value={capitalize(order.fulfillerComment || '--')}
                 />
             </div>
             {order.fulfillerStatus === 'COMPLETED' && order.procedures?.[0]?.procedureReport && (

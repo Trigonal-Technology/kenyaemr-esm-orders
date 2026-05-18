@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import classNames from 'classnames';
 import { useOrderBasket } from '@openmrs/esm-patient-common-lib';
 import {
@@ -7,12 +7,10 @@ import {
   useSession,
   useConfig,
   ExtensionSlot,
-  type DefaultWorkspaceProps,
-  launchWorkspace,
 } from '@openmrs/esm-framework';
 import { postOrder, showOrderSuccessToast } from '@openmrs/esm-patient-common-lib';
 import { usePatientProcedureOrders } from '../../../hooks/usePatientProcedureOrders';
-import { prepProceduresOrderPostData, useOrderReasons, useConceptById, type Concept } from '../api';
+import { prepProceduresOrderPostData } from '../api';
 import {
   Button,
   ButtonSet,
@@ -35,8 +33,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { type ConfigObject } from '../../../config-schema';
 import styles from './procedures-order-form.scss';
-import type { ProcedureOrderBasketItem, OrderFrequency } from '../../../types';
-import { useOrderConfig } from '../order-config';
+import type { ProcedureOrderBasketItem } from '../../../types';
 import { moduleName } from '../../../constants';
 import { Workspace2DefinitionProps } from '@openmrs/esm-framework';
 
@@ -66,7 +63,6 @@ export function ProceduresOrderForm({
   const { t } = useTranslation();
   const isTablet = useLayoutType() === 'tablet';
   const session = useSession();
-  const { orderConfigObject, isLoading: isLoadingOrderConfig, error: errorFetchingOrderConfig } = useOrderConfig();
   const config = useConfig<ConfigObject>();
   const { orders, setOrders } = useOrderBasket<ProcedureOrderBasketItem>(patient, orderTypeUuid, (order, patientUuid, encounterUuid) =>
     prepProceduresOrderPostData(order, patientUuid, encounterUuid, config),
@@ -74,30 +70,15 @@ export function ProceduresOrderForm({
   const { mutate: mutateOrders } = usePatientProcedureOrders(patient?.id);
   const { testTypes, isLoading: isLoadingTestTypes, error: errorLoadingTestTypes } = useProceduresTypes();
   const [showErrorNotification, setShowErrorNotification] = useState(false);
-  const {
-    items: { answers: specimenSourceItems },
-    isLoading: isLoadingSpecimenSourceItems,
-    isError: errorFetchingSpecimenSourceItems,
-  } = useConceptById('159959AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA');
-  const {
-    items: { setMembers: specimenTypeItems },
-    isLoading: isLoadingSpecimenTypeItems,
-    isError: errorFetchingSpecimenTypeItems,
-  } = useConceptById('162476AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA');
-  const orderReasonRequired = (
-    config.labTestsWithOrderReasons?.find((c) => c.labTestUuid === initialOrder?.testType?.conceptUuid) || {}
-  ).required;
-
-  const {
-    items: { answers: bodySiteItems },
-  } = useConceptById('162668AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA');
+  const [showScheduleDate, setShowScheduleDate] = useState(
+    initialOrder?.urgency === 'ON_SCHEDULED_DATE'
+  );
 
   const proceduresOrderFormSchema = z.object({
     instructions: z.string().optional(),
     urgency: z.string().refine((value) => value !== '', {
       message: translateFrom(moduleName, 'addLabOrderPriorityRequired', 'Priority is required'),
     }),
-    labReferenceNumber: z.string().optional(),
     testType: z.object(
       { label: z.string(), conceptUuid: z.string() },
       {
@@ -105,41 +86,21 @@ export function ProceduresOrderForm({
         invalid_type_error: translateFrom(moduleName, 'addLabOrderLabReferenceRequired', 'Test type is required'),
       },
     ),
-    category: z.string().optional(),
-    orderReason: orderReasonRequired
-      ? z
-        .string({
-          required_error: translateFrom(moduleName, 'addLabOrderLabOrderReasonRequired', 'Order reason is required'),
-        })
-        .refine(
-          (value) => !!value,
-          translateFrom(moduleName, 'addLabOrderLabOrderReasonRequired', 'Order reason is required'),
-        )
-      : z.string().optional(),
     scheduleDate: z.union([z.string(), z.date(), z.string().optional()]),
-    commentsToFulfiller: z.string().optional(),
-    numberOfRepeats: z.string().optional(),
-    previousOrder: z.string().optional(),
-    frequency: z.string().optional(),
-    bodySite: z.string().optional(),
-    orderReasonNonCoded: z.string().min(1, {
-      message: translateFrom(moduleName, 'addOrderReasonRequired', 'Order reason is required'),
-    }),
+    numberOfRepeats: z.union([z.number(), z.string()]).optional(),
   });
-
-  const orderFrequencies: Array<OrderFrequency> = useMemo(
-    () => orderConfigObject?.orderFrequencies ?? [],
-    [orderConfigObject],
-  );
 
   const {
     control,
     handleSubmit,
-    formState: { errors, defaultValues, isDirty },
+    formState: { errors, isDirty },
   } = useForm<ProcedureOrderBasketItem>({
     mode: 'all',
     resolver: zodResolver(proceduresOrderFormSchema),
     defaultValues: {
+      urgency: 'ROUTINE',
+      numberOfRepeats: '1',
+      scheduleDate: initialOrder?.scheduledDate || initialOrder?.scheduleDate,
       ...initialOrder,
     },
   });
@@ -147,12 +108,6 @@ export function ProceduresOrderForm({
   useEffect(() => {
     setHasUnsavedChanges(isDirty);
   }, [isDirty, setHasUnsavedChanges]);
-
-  const orderReasonUuids =
-    (config.labTestsWithOrderReasons?.find((c) => c.labTestUuid === defaultValues?.testType?.conceptUuid) || {})
-      .orderReasons || [];
-
-  const { orderReasons } = useOrderReasons(orderReasonUuids);
 
   const handleFormSubmission = useCallback(
     (data: ProcedureOrderBasketItem) => {
@@ -231,18 +186,17 @@ export function ProceduresOrderForm({
   );
 
   const cancelOrder = useCallback(() => {
-    setOrders(orders.filter((order) => order.testType.conceptUuid !== defaultValues.testType.conceptUuid));
+    const testTypeUuid = initialOrder?.testType?.conceptUuid || '';
+    setOrders(orders.filter((order) => order.testType.conceptUuid !== testTypeUuid));
     setHasUnsavedChanges(false);
     closeWorkspace();
-  }, [closeWorkspace, orders, setOrders, defaultValues, initialOrder, setHasUnsavedChanges]);
+  }, [closeWorkspace, orders, setOrders, initialOrder, setHasUnsavedChanges]);
 
   const onError = (errors: FieldErrors<ProcedureOrderBasketItem>) => {
     if (errors) {
       setShowErrorNotification(true);
     }
   };
-
-  const [showScheduleDate, setShowScheduleDate] = useState(false);
 
   return (
     <>
@@ -251,7 +205,7 @@ export function ProceduresOrderForm({
           kind="error"
           lowContrast
           className={styles.inlineNotification}
-          title={t('errorLoadingTestTypes', 'Error occured when loading test types')}
+          title={t('errorLoadingTestTypes', 'Error occurred when loading test types')}
           subtitle={t('tryReopeningTheForm', 'Please try launching the form again')}
         />
       )}
@@ -268,7 +222,7 @@ export function ProceduresOrderForm({
                     <ComboBox
                       size="lg"
                       id="testTypeInput"
-                      titleText={t('testType', 'Test type')}
+                      titleText={t('testType', 'Procedure / Test type')}
                       selectedItem={value}
                       items={testTypes ?? []}
                       placeholder={
@@ -279,34 +233,6 @@ export function ProceduresOrderForm({
                       onChange={({ selectedItem }) => onChange(selectedItem)}
                       invalid={errors.testType?.message}
                       invalidText={errors.testType?.message}
-                    />
-                  )}
-                />
-              </InputWrapper>
-            </Column>
-            <Column lg={16} md={8} sm={4}>
-              <InputWrapper>
-                <Controller
-                  name="category"
-                  control={control}
-                  render={({ field: { onChange, onBlur, value }, fieldState: { error } }) => (
-                    <ComboBox
-                      size="lg"
-                      id="categoryInput"
-                      titleText={t('operationCategory', 'Operation category')}
-                      selectedItem={[
-                        { value: config.minorProcedureCategoryUuid, label: 'Minor' },
-                        { value: config.majorProcedureCategoryUuid, label: 'Major' },
-                      ].find((option) => option.value === value) || null}
-                      items={[
-                        { value: config.minorProcedureCategoryUuid, label: 'Minor' },
-                        { value: config.majorProcedureCategoryUuid, label: 'Major' },
-                      ]}
-                      placeholder={t('categoryPlaceholder', 'Select category')}
-                      onBlur={onBlur}
-                      onChange={({ selectedItem }) => onChange(selectedItem?.value || '')}
-                      invalid={error?.message}
-                      invalidText={error?.message}
                     />
                   )}
                 />
@@ -368,56 +294,6 @@ export function ProceduresOrderForm({
               </Column>
             </Grid>
           )}
-          {orderReasons.length > 0 && (
-            <Grid className={styles.gridRow}>
-              <Column lg={16} md={8} sm={4}>
-                <InputWrapper>
-                  <Controller
-                    name="orderReason"
-                    control={control}
-                    render={({ field: { onChange, onBlur, value } }) => (
-                      <ComboBox
-                        size="lg"
-                        id="orderReasonInput"
-                        titleText={t('orderReason', 'Order reason')}
-                        selectedItem={''}
-                        itemToString={(item) => item?.display}
-                        items={orderReasons ?? []}
-                        onBlur={onBlur}
-                        onChange={({ selectedItem }) => onChange(selectedItem?.uuid || '')}
-                        invalid={errors.orderReason?.message}
-                        invalidText={errors.orderReason?.message}
-                      />
-                    )}
-                  />
-                </InputWrapper>
-              </Column>
-            </Grid>
-          )}
-          <Grid className={styles.gridRow}>
-            <Column lg={16} md={8} sm={4}>
-              <InputWrapper>
-                <Controller
-                  name="bodySite"
-                  control={control}
-                  render={({ field: { onChange, onBlur, value } }) => (
-                    <ComboBox
-                      size="lg"
-                      id="bodySiteInput"
-                      titleText={t('bodySite', 'Body Site')}
-                      selectedItem={bodySiteItems?.find((option) => option.uuid === value) || null}
-                      items={bodySiteItems ?? []}
-                      onBlur={onBlur}
-                      onChange={({ selectedItem }) => onChange(selectedItem?.uuid || '')}
-                      invalid={errors.bodySite?.message}
-                      invalidText={errors.bodySite?.message}
-                      itemToString={(item) => item?.display}
-                    />
-                  )}
-                />
-              </InputWrapper>
-            </Column>
-          </Grid>
           <Grid className={styles.gridRow}>
             <Column lg={16} md={8} sm={4}>
               <InputWrapper>
@@ -428,66 +304,14 @@ export function ProceduresOrderForm({
                     <NumberInput
                       enableCounter
                       id="numberOfRepeats"
-                      label={t('numberOfRepeats', 'Number Of Repeats')}
-                      min={0}
+                      label={t('numberOfRepeats', 'Quantity / Number of repeats')}
+                      min={1}
                       hideSteppers={false}
                       value={value}
-                      onChange={onChange}
+                      onChange={(event, { value }) => onChange(value)}
                       onBlur={onBlur}
                       invalid={errors.numberOfRepeats?.message}
                       invalidText={errors.numberOfRepeats?.message}
-                    />
-                  )}
-                />
-              </InputWrapper>
-            </Column>
-          </Grid>
-          <Grid className={styles.gridRow}>
-            <Column lg={16} md={8} sm={4}>
-              <InputWrapper>
-                <Controller
-                  name="frequency"
-                  control={control}
-                  render={({ field: { onChange, onBlur, value } }) => (
-                    <ComboBox
-                      size="lg"
-                      id="frequencyInput"
-                      titleText={t('frequency', 'Frequency')}
-                      selectedItem={orderFrequencies.find((option) => option.value === value) || null}
-                      items={orderFrequencies ?? []}
-                      onBlur={onBlur}
-                      onChange={({ selectedItem }) => onChange(selectedItem?.value || '')}
-                      invalid={errors.frequency?.message}
-                      invalidText={errors.frequency?.message}
-                      itemToString={(item) => item?.value}
-                      disabled={isLoadingOrderConfig}
-                      placeholder={
-                        isLoadingOrderConfig ? `${t('loading', 'Loading')}...` : t('testTypePlaceholder', 'Select one')
-                      }
-                    />
-                  )}
-                />
-              </InputWrapper>
-            </Column>
-          </Grid>
-          <Grid className={styles.gridRow}>
-            <Column lg={16} md={8} sm={4}>
-              <InputWrapper>
-                <Controller
-                  name="orderReasonNonCoded"
-                  control={control}
-                  render={({ field: { onChange, onBlur, value } }) => (
-                    <TextArea
-                      enableCounter
-                      id="orderReasonNonCodedInput"
-                      size="lg"
-                      labelText={'Order Reason'}
-                      value={value}
-                      onChange={onChange}
-                      onBlur={onBlur}
-                      maxCount={500}
-                      invalid={errors.orderReasonNonCoded?.message}
-                      invalidText={errors.orderReasonNonCoded?.message}
                     />
                   )}
                 />
@@ -512,30 +336,6 @@ export function ProceduresOrderForm({
                       maxCount={500}
                       invalid={errors.instructions?.message}
                       invalidText={errors.instructions?.message}
-                    />
-                  )}
-                />
-              </InputWrapper>
-            </Column>
-          </Grid>
-          <Grid className={styles.gridRow}>
-            <Column lg={16} md={8} sm={4}>
-              <InputWrapper>
-                <Controller
-                  name="commentsToFulfiller"
-                  control={control}
-                  render={({ field: { onChange, onBlur, value } }) => (
-                    <TextArea
-                      enableCounter
-                      id="commentsToFulfillerInput"
-                      size="lg"
-                      labelText={t('commentsToFulfiller', 'Comments To Fulfiller')}
-                      value={value}
-                      onChange={onChange}
-                      onBlur={onBlur}
-                      maxCount={500}
-                      invalid={errors.commentsToFulfiller?.message}
-                      invalidText={errors.commentsToFulfiller?.message}
                     />
                   )}
                 />
