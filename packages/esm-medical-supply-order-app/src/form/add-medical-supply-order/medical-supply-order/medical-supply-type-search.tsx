@@ -6,13 +6,15 @@ import { ArrowRight, ShoppingCartArrowDown, ShoppingCartArrowUp } from '@carbon/
 import { useDebounce, useLayoutType, useSession, ResponsiveWrapper, closeWorkspace, launchWorkspace, useConfig } from '@openmrs/esm-framework';
 import { useOrderBasket } from '@openmrs/esm-patient-common-lib';
 import { createPrepMedicalSupplyPostData } from '../api';
-import { type MedicalSupplyType } from '../../../hooks/useMedicalSupplyTypes';
-import { UseMedicalSupplyType } from '../../../hooks/useMedicalSupplyTypes';
+import {
+  useMedicalSupplyTypes,
+  type MedicalSupplyType,
+  type UseMedicalSupplyType,
+} from '../../../hooks/useMedicalSupplyTypes';
 import { createEmptyMedicalSupplyOrder } from './medical-supply-order';
 import { type MedicalSupplyOrderBasketItem } from '../../../types';
-import type { Workspace2DefinitionProps, Visit } from '@openmrs/esm-framework';
+import type { Workspace2DefinitionProps, Visit, ConfigObject } from '@openmrs/esm-framework';
 import type { MedicalSupplyConfig } from '../../../config-schema';
-import { useMedicalSupplySearch } from './medical-supply-order.resource';
 import styles from './medical-supply-type-search.scss';
 
 export interface TestTypeSearchProps {
@@ -23,7 +25,7 @@ export interface TestTypeSearchProps {
   visit: Visit;
 }
 
-export function MedicalSupplyTypeSearch({ openLabForm, patient, orderTypeUuid, closeWorkspace }: TestTypeSearchProps) {
+export function MedicalSupplyTypeSearch({ openLabForm, patient, orderTypeUuid, closeWorkspace, visit }: TestTypeSearchProps) {
   const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm);
@@ -58,6 +60,7 @@ export function MedicalSupplyTypeSearch({ openLabForm, patient, orderTypeUuid, c
         patient={patient}
         orderTypeUuid={orderTypeUuid}
         closeWorkspace={closeWorkspace}
+        visit={visit}
       />
     </>
   );
@@ -70,6 +73,7 @@ interface TestTypeSearchResultsProps {
   patient: any;
   orderTypeUuid: string;
   closeWorkspace: Workspace2DefinitionProps['closeWorkspace'];
+  visit: Visit;
 }
 
 function TestTypeSearchResults({
@@ -79,10 +83,11 @@ function TestTypeSearchResults({
   patient,
   orderTypeUuid,
   closeWorkspace,
+  visit,
 }: TestTypeSearchResultsProps) {
   const { t } = useTranslation();
   const isTablet = useLayoutType() === 'tablet';
-  const { testTypes, isLoading, error } = useMedicalSupplySearch(searchTerm, orderTypeUuid);
+  const { medicalSupplyTypes: testTypes, isLoading, error } = useMedicalSupplyTypes(searchTerm);
 
   if (isLoading) {
     return <TestTypeSearchSkeleton />;
@@ -131,6 +136,7 @@ function TestTypeSearchResults({
                 patient={patient}
                 orderTypeUuid={orderTypeUuid}
                 closeWorkspace={closeWorkspace}
+                visit={visit}
               />
             ))}
           </div>
@@ -164,6 +170,7 @@ interface TestTypeSearchResultItemProps {
   patient: any;
   orderTypeUuid: string;
   closeWorkspace: Workspace2DefinitionProps['closeWorkspace'];
+  visit: Visit;
 }
 
 const TestTypeSearchResultItem: React.FC<TestTypeSearchResultItemProps> = ({
@@ -172,6 +179,7 @@ const TestTypeSearchResultItem: React.FC<TestTypeSearchResultItemProps> = ({
   patient,
   orderTypeUuid,
   closeWorkspace,
+  visit,
 }) => {
   const isTablet = useLayoutType() === 'tablet';
   const session = useSession();
@@ -188,9 +196,9 @@ const TestTypeSearchResultItem: React.FC<TestTypeSearchResultItemProps> = ({
 
   const createLabOrder = useCallback(
     (testType: MedicalSupplyType) => {
-      return createEmptyMedicalSupplyOrder(testType, session.currentProvider.uuid);
+      return createEmptyMedicalSupplyOrder(testType, session.currentProvider.uuid, visit);
     },
-    [session.currentProvider?.uuid],
+    [session.currentProvider?.uuid, visit],
   );
 
   const { t } = useTranslation();
@@ -199,7 +207,7 @@ const TestTypeSearchResultItem: React.FC<TestTypeSearchResultItemProps> = ({
     const labOrder = createLabOrder(testType);
     labOrder.isOrderIncomplete = true;
     setOrders([...orders, labOrder]);
-    closeWorkspace();
+    // closeWorkspace({ discardUnsavedChanges: true });
   }, [orders, setOrders, createLabOrder, testType, closeWorkspace]);
 
   const removeFromBasket = useCallback(() => {

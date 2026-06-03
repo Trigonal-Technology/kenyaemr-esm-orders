@@ -12,12 +12,13 @@ export const priorityOptions = [
 export function createEmptyMedicalSupplyOrder(
   testType: MedicalSupplyType,
   orderer: string,
+  visit?: any,
 ): MedicalSupplyOrderBasketItem {
   return {
     action: 'NEW',
     display: testType.label,
     testType,
     orderer,
-    visit: undefined
+    visit,
   };
 }

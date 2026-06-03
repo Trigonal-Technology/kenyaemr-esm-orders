@@ -10,7 +10,7 @@ export const configSchema = {
   medicalSupplyConceptSetUuid: {
     _type: Type.String,
     _description: 'Medical Supply Concept SET UUID',
-    _default: '',
+    _default: '095befe9-ff7c-4eba-bbd8-37b055f52e7d',
   },
   medicalSupplyConceptClassUuid: {
     _type: Type.String,

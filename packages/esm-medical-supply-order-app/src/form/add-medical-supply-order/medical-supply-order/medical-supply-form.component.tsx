@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import classNames from 'classnames';
 import { useOrderBasket } from '@openmrs/esm-patient-common-lib';
 import { translateFrom, useLayoutType, useSession, useConfig, ExtensionSlot, launchWorkspace, Workspace2DefinitionProps } from '@openmrs/esm-framework';
+import { postOrder, showOrderSuccessToast } from '@openmrs/esm-patient-common-lib';
+import { usePatientMedicalSupplyOrders } from '../../../hooks/usePatientMedicalSupplyOrders';
 import {
   Button,
   ButtonSet,
@@ -34,6 +36,7 @@ export interface MedicalSupplyOrderFormProps {
   orderTypeUuid: string;
   setHasUnsavedChanges: (hasUnsavedChanges: boolean) => void;
   patient: fhir.Patient;
+  visit: any;
 }
 
 // Designs:
@@ -46,13 +49,15 @@ export function MedicalSupplyOrderForm({
   orderTypeUuid,
   setHasUnsavedChanges,
   patient,
+  visit,
 }: MedicalSupplyOrderFormProps) {
   const { t } = useTranslation();
   const isTablet = useLayoutType() === 'tablet';
   const session = useSession();
-  
+
   const { orders: configOrders, careSettingUuid } = useConfig<MedicalSupplyConfig>();
   const { orders, setOrders } = useOrderBasket<MedicalSupplyOrderBasketItem>(patient, orderTypeUuid, createPrepMedicalSupplyPostData(configOrders.medicalSupplyOrderTypeUuid, careSettingUuid));
+  const { mutate: mutateOrders } = usePatientMedicalSupplyOrders(patient?.id);
 
   const [showErrorNotification, setShowErrorNotification] = useState(false);
 
@@ -97,20 +102,72 @@ export function MedicalSupplyOrderForm({
       ...initialOrder,
     },
   });
+  useEffect(() => {
+    setHasUnsavedChanges(isDirty);
+  }, [isDirty, setHasUnsavedChanges]);
 
   const handleFormSubmission = useCallback(
     (data: MedicalSupplyOrderBasketItem) => {
-      data.action = 'NEW';
+      data.action = initialOrder?.action || 'NEW';
+      data.previousOrder = initialOrder?.previousOrder;
       data.careSetting = careSettingUuid;
       data.orderer = session.currentProvider.uuid;
+      data.display = data.testType.label;
       const newOrders = [...orders];
       const existingOrder = orders.find((order) => order.testType.conceptUuid == defaultValues.testType.conceptUuid);
       const orderIndex = existingOrder ? orders.indexOf(existingOrder) : orders.length;
       newOrders[orderIndex] = data;
       setOrders(newOrders);
-      closeWorkspace();
+      closeWorkspace({ discardUnsavedChanges: true });
     },
-    [orders, setOrders, session?.currentProvider?.uuid, defaultValues, closeWorkspace],
+    [orders, setOrders, session?.currentProvider?.uuid, defaultValues, closeWorkspace, initialOrder, careSettingUuid],
+  );
+
+  const submitMedicalSupplyOrderToServer = useCallback(
+    async (data: MedicalSupplyOrderBasketItem) => {
+      const finalizedOrder: any = {
+        ...initialOrder,
+        ...data,
+        action: 'REVISE',
+        orderer: session.currentProvider.uuid,
+        patient: patient,
+      };
+
+      const encounterUuid = finalizedOrder.encounterUuid || visit?.uuid || visit?.encounter?.uuid;
+
+      if (finalizedOrder) {
+        const postData = createPrepMedicalSupplyPostData(
+          configOrders.medicalSupplyOrderTypeUuid,
+          careSettingUuid,
+        )(finalizedOrder, patient.id, encounterUuid);
+
+        try {
+          const response = await postOrder(postData);
+          if (response) {
+            setOrders(orders.filter((order) => order.testType.conceptUuid !== initialOrder.testType.conceptUuid));
+            mutateOrders();
+            showOrderSuccessToast(moduleName, [finalizedOrder]);
+            setHasUnsavedChanges(false);
+            closeWorkspace({ discardUnsavedChanges: true });
+          }
+        } catch (error) {
+          setShowErrorNotification(true);
+        }
+      }
+    },
+    [
+      initialOrder,
+      session.currentProvider.uuid,
+      patient,
+      visit,
+      configOrders.medicalSupplyOrderTypeUuid,
+      careSettingUuid,
+      orders,
+      setOrders,
+      mutateOrders,
+      setHasUnsavedChanges,
+      closeWorkspace,
+    ],
   );
 
   const cancelOrder = useCallback(() => {
@@ -128,7 +185,7 @@ export function MedicalSupplyOrderForm({
     <>
       <Form
         className={styles.orderForm}
-        onSubmit={handleSubmit(handleFormSubmission, onError)}
+        onSubmit={handleSubmit(initialOrder?.action === 'REVISE' ? submitMedicalSupplyOrderToServer : handleFormSubmission, onError)}
         id="medicalSupplyOrderForm">
         <div className={styles.form}>
           <ExtensionSlot name="top-of-medical-supply-order-form-slot" state={{ order: initialOrder }} />

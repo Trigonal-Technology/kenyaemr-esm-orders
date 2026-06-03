@@ -1,0 +1,134 @@
+@use '@carbon/colors';
+@use '@carbon/layout';
+@use '@carbon/type';
+@use '@openmrs/esm-styleguide/src/vars' as vars;
+
+.widgetCard {
+    border: 1px solid colors.$gray-20;
+}
+
+.row {
+    span {
+        margin: auto;
+    }
+
+    p {
+        padding: layout.$spacing-02 0;
+    }
+}
+
+.tableCell {
+    vertical-align: middle;
+}
+
+.singleLineText {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.buttons {
+    justify-content: flex-end;
+    display: flex;
+}
+
+.priorityPill {
+    @include type.type-style('label-01');
+    background-color: colors.$gray-20;
+    border-radius: layout.$spacing-05;
+    padding: layout.$spacing-01;
+    text-align: center;
+
+    &[data-priority='routine'] {
+        background-color: colors.$green-20;
+    }
+
+    &[data-priority='urgent'],
+    &[data-priority='stat'] {
+        background-color: colors.$red-20;
+    }
+}
+
+.statusPill {
+    @include type.type-style('label-01');
+    background-color: colors.$gray-20;
+    border-radius: layout.$spacing-05;
+    padding: layout.$spacing-01;
+    padding-inline: layout.$spacing-03;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    &[data-status='received'] {
+        background-color: colors.$blue-20;
+    }
+
+    &[data-status='in progress'] {
+        background-color: colors.$cyan-20;
+    }
+
+    &[data-status='completed'] {
+        background-color: colors.$green-20;
+    }
+
+    &[data-status='discontinued'],
+    &[data-status='declined'] {
+        background-color: colors.$red-20;
+    }
+}
+
+.table {
+    td {
+        &::after {
+            display: none;
+        }
+    }
+}
+
+.toolBarContent {
+    background-color: colors.$gray-10;
+}
+
+.paginationContainer {
+    >div {
+        border-top: none !important;
+    }
+}
+
+.filterContainer {
+    display: flex;
+    align-items: center;
+    gap: layout.$spacing-05;
+    margin-bottom: layout.$spacing-05;
+}
+
+.rangeLabel {
+    @include type.type-style('helper-text-02');
+    margin-right: layout.$spacing-02;
+}
+
+.detailsGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: layout.$spacing-05;
+    margin-bottom: layout.$spacing-05;
+}
+
+.printButton {
+    margin-left: 1.25rem;
+}
+
+.addButton {
+    svg {
+        fill: currentColor !important;
+    }
+}
+
+.layer {
+    height: 100%;
+}
+
+.menuItem {
+    max-width: none;
+}

@@ -10,8 +10,26 @@
       "component": "medicalSupplyOrderPanel",
       "slot": "order-basket-slot",
       "order": 5
+    },
+    {
+      "name": "patient-medical-supply-summary-dashboard",
+      "component": "medicalsupplyDashboardLink",
+      "slot": "patient-chart-dashboard-slot",
+      "meta": {
+        "slot": "patient-chart-medical-supply-dashboard-slot",
+        "path": "medicalSupply",
+        "hideDashboardTitle": true
+      },
+      "order": 4
+    },
+    {
+      "name": "patient-medical-supply-dashboard",
+      "component": "medicalSupplyOrdersSummary",
+      "slot": "patient-chart-medical-supply-dashboard-slot",
+      "meta": {
+        "fullWidth": false
+      }
     }
-
   ],
   "workspaces": [
     {
@@ -19,7 +37,6 @@
       "type": "order",
       "component": "addMedicalSupplyOrderWorkspace",
       "title": "Add medical supply order"
-
     }
   ],
   "workspaces2": [
@@ -27,6 +44,12 @@
       "name": "add-medical-supply-order",
       "component": "addMedicalSupplyOrderWorkspace",
       "window": "patient-chart-order-basket"
+    }
+  ],
+  "modals": [
+    {
+      "name": "reject-medical-supply-order-modal",
+      "component": "rejectMedicalSupplyOrderModal"
     }
   ],
   "pages": [

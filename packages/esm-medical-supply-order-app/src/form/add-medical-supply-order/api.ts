@@ -17,9 +17,9 @@ export function useOrderReasons(conceptUuids: Array<string>) {
   const ob = data?.data;
   const orderReasons = ob
     ? Object.entries(ob).map(([key, value]) => ({
-        uuid: value.uuid,
-        display: value.display,
-      }))
+      uuid: value.uuid,
+      display: value.display,
+    }))
     : [];
 
   if (error) {
@@ -226,4 +226,15 @@ export function useConceptById(id: string) {
     isLoading,
     isError: error,
   };
+}
+export async function updateOrder(uuid: string, body: any) {
+  const abortController = new AbortController();
+  return openmrsFetch(`${restBaseUrl}/order/${uuid}/fulfillerdetails`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    signal: abortController.signal,
+    body: body,
+  });
 }
