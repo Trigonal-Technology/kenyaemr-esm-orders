@@ -24,8 +24,6 @@ export const usePatientImagingResults = (patientUuid: string) => {
   } = useConfig<ImagingConfig>();
   const baseUrl = `${restBaseUrl}/order?patient=${patientUuid}&orderTypes=${radiologyOrderTypeUuid}&v=${imagingResultsResponseFormat}&&fulfillerStatus=${fulfillerStatus}`;
   const { data, isLoading, error } = useSWR<{ data: { results: Array<Result> } }>(baseUrl, openmrsFetch);
-  const filteredOrders = data?.data?.results?.filter(
-    (order) => order.concept.conceptClass.uuid === radiologyConceptClassUuid,
-  );
+  const filteredOrders = data?.data?.results;
   return { orders: filteredOrders ?? [], isLoading, error };
 };

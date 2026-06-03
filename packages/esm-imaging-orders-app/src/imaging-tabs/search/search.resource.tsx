@@ -25,8 +25,6 @@ export const usePatientOrders = (patientUuid: string) => {
     patientUuid ? baseUrl : null,
     openmrsFetch,
   );
-  const filteredOrders = data?.data?.results?.filter(
-    (order) => order.concept.conceptClass.uuid === radiologyConceptClassUuid,
-  );
+  const filteredOrders = data?.data?.results;
   return { orders: filteredOrders ?? [], isLoading, error };
 };

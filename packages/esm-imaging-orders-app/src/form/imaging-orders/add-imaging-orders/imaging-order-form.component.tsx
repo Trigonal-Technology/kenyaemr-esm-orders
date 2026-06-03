@@ -1,6 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import classNames from 'classnames';
-import { useOrderBasket } from '@openmrs/esm-patient-common-lib';
+import {
+  useOrderBasket,
+  postOrder,
+  useMutatePatientOrders,
+  showOrderSuccessToast,
+} from '@openmrs/esm-patient-common-lib';
 import {
   translateFrom,
   useLayoutType,
@@ -8,8 +13,9 @@ import {
   type DefaultWorkspaceProps,
   ExtensionSlot,
   launchWorkspace,
+  showSnackbar,
 } from '@openmrs/esm-framework';
-import { careSettingUuid, prepImagingOrderPostData, useConceptById } from '../api';
+import { createPrepImagingOrderPostData, prepImagingOrderPostData, useConceptById } from '../api';
 import {
   Button,
   ButtonSet,
@@ -32,12 +38,30 @@ import { z } from 'zod';
 import { moduleName, BODY_SITE, MODALITY } from '../../../constants';
 import styles from './imaging-order-form.scss';
 import type { ImagingOrderBasketItem } from '../../../types';
+import type { Workspace2DefinitionProps } from '@openmrs/esm-framework';
+import { useConfig } from '@openmrs/esm-framework';
+import { ImagingConfig } from '../../../config-schema';
+
+// export interface ImagingOrderFormProps {
+//   initialOrder: ImagingOrderBasketItem;
+//   closeWorkspace: (options?: any) => void;
+//   closeWorkspaceWithSavedChanges: (options?: any) => void;
+//   promptBeforeClosing: (cb: () => boolean) => void;
+//   patient: any;
+// }
 
 export interface ImagingOrderFormProps {
+  closeWorkspace: Workspace2DefinitionProps['closeWorkspace'];
   initialOrder: ImagingOrderBasketItem;
-  closeWorkspace: DefaultWorkspaceProps['closeWorkspace'];
-  closeWorkspaceWithSavedChanges: DefaultWorkspaceProps['closeWorkspaceWithSavedChanges'];
-  promptBeforeClosing: DefaultWorkspaceProps['promptBeforeClosing'];
+
+  /**
+   * This field should only be supplied for an existing order saved to the backend
+   */
+  orderToEditOrdererUuid?: string;
+  orderTypeUuid: string;
+  setHasUnsavedChanges: (hasUnsavedChanges: boolean) => void;
+  patient: fhir.Patient;
+  visit: any;
 }
 
 // Designs:
@@ -45,16 +69,26 @@ export interface ImagingOrderFormProps {
 //   https://app.zeplin.io/project/60d5947dd636aebbd63dce4c/screen/640b06d286e0aa7b0316db4a
 export function ImagingOrderForm({
   initialOrder,
+  orderToEditOrdererUuid,
   closeWorkspace,
-  closeWorkspaceWithSavedChanges,
-  promptBeforeClosing,
+  orderTypeUuid,
+  setHasUnsavedChanges,
+  patient,
+  visit,
 }: ImagingOrderFormProps) {
   const { t } = useTranslation();
   const isTablet = useLayoutType() === 'tablet';
   const session = useSession();
-  const { orders, setOrders } = useOrderBasket<ImagingOrderBasketItem>('imaging', prepImagingOrderPostData);
   const { testTypes, isLoading: isLoadingTestTypes, error: errorLoadingTestTypes } = useImagingTypes();
   const [showErrorNotification, setShowErrorNotification] = useState(false);
+  const { orders: configOrders, careSettingUuid } = useConfig<ImagingConfig>();
+  const { mutate: mutateOrders } = useMutatePatientOrders(patient.id || (patient as any).uuid);
+
+  const { orders, setOrders, clearOrders } = useOrderBasket<ImagingOrderBasketItem>(
+    patient,
+    orderTypeUuid,
+    createPrepImagingOrderPostData(configOrders.radiologyOrderTypeUuid, careSettingUuid),
+  );
 
   const lateralityItems = [
     { value: 'LEFT', label: 'Left' },
@@ -66,9 +100,9 @@ export function ImagingOrderForm({
     items: { answers: bodySiteItems = [] },
   } = useConceptById(BODY_SITE);
 
-  const {
-    items: { setMembers: modalityItems = [] },
-  } = useConceptById(MODALITY);
+  // const {
+  //   items: { setMembers: modalityItems = [] },
+  // } = useConceptById(MODALITY);
 
 
   const imagingOrderFormSchema = z.object({
@@ -84,10 +118,10 @@ export function ImagingOrderForm({
       },
     ),
     scheduleDate: z.union([z.string(), z.date(), z.string().optional()]),
-    commentToFulfiller: z.string().optional(),
+    // commentToFulfiller: z.string().optional(),
     laterality: z.string().optional(),
     bodySite: z.string().optional(),
-    modality: z.string().optional(),
+    // modality: z.string().optional(),
   });
 
   const {
@@ -102,47 +136,123 @@ export function ImagingOrderForm({
     },
   });
 
+  useEffect(() => {
+    setHasUnsavedChanges(isDirty);
+  }, [isDirty, setHasUnsavedChanges]);
+
   const handleFormSubmission = useCallback(
     (data: ImagingOrderBasketItem) => {
+      const providerUuid = session?.currentProvider?.uuid;
+      const patientId = (patient as any)?.uuid || (patient as any)?.id;
+
+      if (!patientId || !providerUuid) {
+        console.error('Missing patient ID or provider UUID', { patientId, providerUuid });
+        return;
+      }
+
       // Preserve the action from initialOrder (REVISE, RENEW, etc.) instead of hardcoding to NEW
-      data.action = initialOrder?.action || 'NEW';
+      const updatedOrder: any = {
+        ...data,
+        display: data.testType.label,
+        action: initialOrder?.action || 'NEW',
+        careSetting: initialOrder?.careSetting || careSettingUuid,
+        orderer: providerUuid,
+        patient: patientId,
+      };
+
       // Preserve previousOrder and uuid for REVISE/RENEW orders (required by API)
       if (initialOrder?.previousOrder) {
-        data.previousOrder = initialOrder.previousOrder;
+        updatedOrder.previousOrder = initialOrder.previousOrder;
       }
       if (initialOrder?.uuid) {
-        data.uuid = initialOrder.uuid;
+        updatedOrder.uuid = initialOrder.uuid;
       }
-      data.careSetting = careSettingUuid;
-      data.orderer = session.currentProvider.uuid;
+
       const newOrders = [...orders];
-      const existingOrder = orders.find((order) => order.testType.conceptUuid == defaultValues.testType.conceptUuid);
-      const orderIndex = existingOrder ? orders.indexOf(existingOrder) : orders.length;
-      newOrders[orderIndex] = data;
-      setOrders(newOrders);
-      closeWorkspaceWithSavedChanges({
-        onWorkspaceClose: () => launchWorkspace('order-basket'),
+
+      // Try to find if this exact test is already in the basket to replace it
+      const existingOrderIndex = orders.findIndex((order) => {
+        const orderConceptUuid = order?.testType?.conceptUuid;
+        const initialConceptUuid = initialOrder?.testType?.conceptUuid;
+        return orderConceptUuid === initialConceptUuid || orderConceptUuid === data?.testType?.conceptUuid;
       });
+
+      if (existingOrderIndex > -1) {
+        newOrders[existingOrderIndex] = updatedOrder;
+      } else {
+        newOrders.push(updatedOrder);
+      }
+
+      setHasUnsavedChanges(false);
+      setOrders(newOrders);
+      closeWorkspace({ discardUnsavedChanges: true });
     },
-    [orders, setOrders, defaultValues, closeWorkspaceWithSavedChanges, session, initialOrder],
+    [orders, setOrders, session, initialOrder, closeWorkspace, patient, setHasUnsavedChanges, careSettingUuid],
+  );
+
+  const submitImagingOrderToServer = useCallback(
+    (data: ImagingOrderBasketItem) => {
+      const providerUuid = session?.currentProvider?.uuid;
+      const patientId = (patient as any)?.uuid || (patient as any)?.id;
+
+      const finalizedOrder: ImagingOrderBasketItem = {
+        ...initialOrder,
+        ...data,
+        display: data.testType.label,
+        orderer: providerUuid,
+      };
+
+      const postData = prepImagingOrderPostData(
+        finalizedOrder,
+        patientId,
+        finalizedOrder?.encounterUuid || (visit as any)?.uuid,
+        configOrders.radiologyOrderTypeUuid,
+        careSettingUuid,
+      );
+
+      return postOrder(postData)
+        .then(() => {
+          clearOrders();
+          mutateOrders();
+          showOrderSuccessToast(moduleName, [finalizedOrder]);
+          closeWorkspace({ discardUnsavedChanges: true });
+        })
+        .catch((error) => {
+          showSnackbar({
+            isLowContrast: false,
+            kind: 'error',
+            title: t('errorSavingImagingOrder', 'Error saving imaging order'),
+            subtitle: error.message,
+          });
+        });
+    },
+    [
+      session,
+      patient,
+      initialOrder,
+      configOrders.radiologyOrderTypeUuid,
+      careSettingUuid,
+      clearOrders,
+      mutateOrders,
+      closeWorkspace,
+      t,
+    ],
   );
 
   const cancelOrder = useCallback(() => {
-    setOrders(orders.filter((order) => order.testType.conceptUuid !== defaultValues.testType.conceptUuid));
-    closeWorkspace({
-      onWorkspaceClose: () => launchWorkspace('order-basket'),
-    });
-  }, [closeWorkspace, orders, setOrders, defaultValues]);
+    const conceptUuid = defaultValues?.testType?.conceptUuid || initialOrder?.testType?.conceptUuid;
+    if (conceptUuid) {
+      setOrders(orders.filter((order) => order.testType.conceptUuid !== conceptUuid));
+    }
+    setHasUnsavedChanges(false);
+    closeWorkspace();
+  }, [closeWorkspace, orders, setOrders, defaultValues, initialOrder, setHasUnsavedChanges]);
 
   const onError = (errors: FieldErrors<ImagingOrderBasketItem>) => {
     if (errors) {
       setShowErrorNotification(true);
     }
   };
-
-  useEffect(() => {
-    promptBeforeClosing(() => isDirty);
-  }, [isDirty, promptBeforeClosing]);
 
   const [showScheduleDate, setShowScheduleDate] = useState(false);
 
@@ -157,7 +267,12 @@ export function ImagingOrderForm({
           subtitle={t('tryReopeningTheForm', 'Please try launching the form again')}
         />
       )}
-      <Form className={styles.orderForm} onSubmit={handleSubmit(handleFormSubmission, onError)}>
+      <Form
+        className={styles.orderForm}
+        onSubmit={handleSubmit(
+          initialOrder?.action === 'REVISE' ? submitImagingOrderToServer : handleFormSubmission,
+          onError,
+        )}>
         <div className={styles.form}>
           <ExtensionSlot name="top-of-imaging-order-form-slot" state={{ order: initialOrder }} />
 
@@ -292,7 +407,7 @@ export function ImagingOrderForm({
             </Column>
           </Grid>
 
-          <Grid className={styles.gridRow}>
+          {/* <Grid className={styles.gridRow}>
             <Column lg={16} md={8} sm={4}>
               <InputWrapper>
                 <Controller
@@ -315,7 +430,7 @@ export function ImagingOrderForm({
                 />
               </InputWrapper>
             </Column>
-          </Grid>
+          </Grid> */}
           {/* <Grid className={styles.gridRow}>
             <Column lg={16} md={8} sm={4}>
               <InputWrapper>
@@ -340,7 +455,7 @@ export function ImagingOrderForm({
               </InputWrapper>
             </Column>
           </Grid> */}
-          <Grid className={styles.gridRow}>
+          {/* <Grid className={styles.gridRow}>
             <Column lg={16} md={8} sm={4}>
               <InputWrapper>
                 <Controller
@@ -387,7 +502,7 @@ export function ImagingOrderForm({
                 />
               </InputWrapper>
             </Column>
-          </Grid>
+          </Grid> */}
         </div>
         <div>
           {showErrorNotification && (

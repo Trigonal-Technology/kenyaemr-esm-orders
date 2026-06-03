@@ -9,11 +9,11 @@ import {
   usePatient,
   getPatientName,
   setCurrentVisit,
-  launchWorkspaceGroup,
+  launchWorkspaceGroup2,
   useVisit,
   showToast,
 } from '@openmrs/esm-framework';
-import { getPatientChartStore } from '@openmrs/esm-patient-common-lib';
+// import { getPatientChartStore } from '@openmrs/esm-patient-common-lib';
 import {
   Table,
   TableHead,
@@ -130,26 +130,16 @@ const OrdersTable: React.FC<OrderTableProps> = ({ patientUuid, imagingOrders, is
       }
 
       setCurrentVisit(patientUuid, activeVisit.uuid);
-      launchWorkspaceGroup('add-imaging-order-workspace-group', {
+      launchWorkspaceGroup2('patient-chart', {
         state: {
           patientUuid,
         },
-        onWorkspaceGroupLaunch: () => {
-          const store = getPatientChartStore();
-          store.setState({
-            patientUuid,
-          });
-        },
         workspaceToLaunch: {
-          name: 'add-imaging-order',
+          name: 'add-imaging-order-workspace',
         },
         workspaceGroupCleanup: () => {
           mutate((key) => typeof key === 'string' && key.startsWith(IMAGING_ORDERS_API_URL), undefined, {
             revalidate: true,
-          });
-          const store = getPatientChartStore();
-          store.setState({
-            patientUuid: undefined,
           });
           setCurrentVisit(null, null);
         },

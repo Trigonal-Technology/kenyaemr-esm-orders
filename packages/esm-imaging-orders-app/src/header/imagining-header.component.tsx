@@ -4,7 +4,7 @@ import { Add } from '@carbon/react/icons';
 import {
   PageHeader,
   PageHeaderContent,
-  launchWorkspace,
+  launchWorkspace2,
   ExtensionSlot,
   useLayoutType,
   XrayPictogram,
@@ -17,7 +17,7 @@ export const ImagingPageHeader: React.FC = () => {
   const responseSize = useLayoutType() === 'tablet' ? 'sm' : 'md';
 
   const launchAddImagingOrderWorkspace = useCallback(() => {
-    launchWorkspace('search-patient-workspace');
+    launchWorkspace2('search-patient-workspace');
   }, []);
 
   return (
@@ -26,9 +26,9 @@ export const ImagingPageHeader: React.FC = () => {
         <PageHeaderContent illustration={<XrayPictogram />} title={t('radiologyAndImaging', 'Radiology and Imaging')} />{' '}
         <div className={styles.pageHeaderActions}>
           <ExtensionSlot className={styles.providerBannerInfoSlot} name="provider-banner-info-slot" />
-          <Button className={styles.addImagingOrderButton} size={responseSize} renderIcon={Add} onClick={launchAddImagingOrderWorkspace}>
+          {/* <Button className={styles.addImagingOrderButton} size={responseSize} renderIcon={Add} onClick={launchAddImagingOrderWorkspace}>
             {t('addImagingOrder', 'Add Imaging Order')}
-          </Button>
+          </Button> */}
         </div>
       </PageHeader>
     </div>

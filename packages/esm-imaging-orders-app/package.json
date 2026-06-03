@@ -43,9 +43,14 @@
   "peerDependencies": {
     "@carbon/react": "^1.x",
     "@openmrs/esm-framework": "8.x",
+    "@openmrs/esm-patient-common-lib": "11.x",
     "react": "^18.1.0",
-    "react-i18next": "11.x",
+    "react-i18next": "16.x",
     "react-router-dom": "6.x",
     "swr": "2.x"
+  },
+  "devDependencies": {
+    "@rspack/cli": "^1.7.4",
+    "@rspack/core": "^1.7.4"
   }
 }

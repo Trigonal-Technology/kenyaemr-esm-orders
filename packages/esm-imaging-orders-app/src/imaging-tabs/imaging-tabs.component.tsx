@@ -7,8 +7,6 @@ import { useOrdersWorkList } from '../hooks/useOrdersWorklist';
 import { TestsOrdered } from './test-ordered/tests-ordered.component';
 import WorkList from './work-list/work-list.component';
 import { ReferredTests } from './referred-test/referred-ordered.component';
-import { Review } from './review-ordered/review-ordered.component';
-import { ApprovedOrders } from './approved/approved-orders.component';
 import { OrdersNotDone } from './orders-not-done/orders-not-done.component';
 import { useImagingOrderStats } from '../shared/imaging.resource';
 
@@ -19,8 +17,7 @@ export const ImagingTabs: React.FC = () => {
   const { t } = useTranslation();
   const params = useParams<{ patientUuid: string }>();
 
-  const { activeOrdersCount, workListCount, referredTestsCount, ordersNotDoneCount } = useOrderCounts();
-  const { pendingReviewCount, approvedOrdersCount } = useCompletedOrders();
+  const { activeOrdersCount, workListCount, referredTestsCount, ordersNotDoneCount, completedCount } = useOrderCounts();
 
   const searchTab = [
     {
@@ -51,11 +48,15 @@ export const ImagingTabs: React.FC = () => {
       count: referredTestsCount,
       component: <ReferredTests />,
     },
-    { label: 'review', text: t('pendingReview', 'Pending Review'), count: pendingReviewCount, component: <Review /> },
-    { label: 'approved', text: t('approved', 'Approved'), count: approvedOrdersCount, component: <ApprovedOrders /> },
     {
-      label: 'notDone',
-      text: t('notDone', 'Not Done'),
+      label: 'completed',
+      text: t('completed', 'Completed'),
+      count: completedCount,
+      component: <WorkList fulfillerStatus="COMPLETED" />,
+    },
+    {
+      label: 'declined',
+      text: t('declined', 'Declined'),
       count: ordersNotDoneCount,
       component: <OrdersNotDone fulfillerStatus="DECLINED" />,
     },
@@ -86,20 +87,9 @@ const useOrderCounts = () => {
   const { count: workListCount } = useImagingOrderStats('IN_PROGRESS');
   const { count: referredTestsCount } = useImagingOrderStats('EXCEPTION');
   const { count: ordersNotDoneCount } = useImagingOrderStats('DECLINED');
+  const { count: completedCount } = useImagingOrderStats('COMPLETED');
 
-  return { activeOrdersCount, workListCount, referredTestsCount, ordersNotDoneCount };
+  return { activeOrdersCount, workListCount, referredTestsCount, ordersNotDoneCount, completedCount };
 };
 
-const useCompletedOrders = () => {
-  const { workListEntries } = useOrdersWorkList('', 'COMPLETED');
-  const pendingReview = workListEntries.filter((item) =>
-    item.procedures?.some((procedure) => procedure.outcome !== 'SUCCESSFUL'),
-  );
-  const pendingReviewCount = pendingReview?.length ?? 0;
-  const approved = workListEntries.filter((item) =>
-    item.procedures?.some((procedure) => procedure.outcome === 'SUCCESSFUL'),
-  );
-  const approvedOrdersCount = approved?.length ?? 0;
 
-  return { pendingReviewCount, approvedOrdersCount };
-};

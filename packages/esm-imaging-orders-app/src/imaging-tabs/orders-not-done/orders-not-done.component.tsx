@@ -28,11 +28,11 @@ export const OrdersNotDone: React.FC<NotDoneProps> = ({ fulfillerStatus }) => {
             showOrderType={false}
             actions={[
               {
-                actionName: 'reject-imaging-order-modal',
+                actionName: 'reject-reason-message',
                 order: 1,
               },
             ]}
-            title={t('ordersNotDone', 'Orders Not Done')}
+            title={t('declinedOrders', 'Declined Orders')}
           />
         </div>
       </>

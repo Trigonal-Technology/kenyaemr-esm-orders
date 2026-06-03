@@ -1,11 +1,12 @@
 import useSWR from 'swr';
-import { type FetchResponse, openmrsFetch, restBaseUrl, showSnackbar } from '@openmrs/esm-framework';
+import { type FetchResponse, openmrsFetch, restBaseUrl, showSnackbar, useConfig } from '@openmrs/esm-framework';
 import type { OrderPost } from '@openmrs/esm-patient-common-lib';
 import useSWRImmutable from 'swr/immutable';
 import { type ImagingOrderBasketItem } from '../../types';
+import type { ImagingConfig } from '../../config-schema';
 
 // TODO: This should be dynamic through configs
-export const careSettingUuid = '6f0c9a92-6f24-11e3-af88-005056821db0';
+// export const careSettingUuid = '6f0c9a92-6f24-11e3-af88-005056821db0';
 
 export function useOrderReasons(conceptUuids: Array<string>) {
   const shouldFetch = conceptUuids && conceptUuids.length > 0;
@@ -14,13 +15,12 @@ export function useOrderReasons(conceptUuids: Array<string>) {
     shouldFetch ? `${restBaseUrl}/${url[0]}` : null,
     openmrsFetch,
   );
-
   const ob = data?.data;
   const orderReasons = ob
     ? Object.entries(ob).map(([, value]) => ({
-        uuid: value.uuid,
-        display: value.display,
-      }))
+      uuid: value.uuid,
+      display: value.display,
+    }))
     : [];
 
   if (error) {
@@ -36,33 +36,47 @@ export function useOrderReasons(conceptUuids: Array<string>) {
 
 export interface ImagingOrderPost extends OrderPost {
   // scheduledDate?: string;
-  commentToFulfiller?: string;
+  // commentToFulfiller?: string;
   laterality?: string;
   bodySite?: string;
-  modality?:string;
+  modality?: string;
+}
+
+// Factory function to create a prep function with config values
+export function createPrepImagingOrderPostData(
+  radiologyOrderTypeUuid: string,
+  careSettingUuid: string,
+): PostDataPrepLabOrderFunction {
+  return (order: ImagingOrderBasketItem, patientUuid: string, encounterUuid: string) => {
+    return prepImagingOrderPostData(order, patientUuid, encounterUuid, radiologyOrderTypeUuid, careSettingUuid);
+  };
 }
 
 export function prepImagingOrderPostData(
   order: ImagingOrderBasketItem,
   patientUuid: string,
   encounterUuid: string,
+  radiologyOrderTypeUuid?: string,
+  careSettingUuid?: string,
 ): ImagingOrderPost {
   let payload = {};
   if (order.action === 'NEW' || order.action === 'RENEW') {
     payload = {
       action: 'NEW',
       type: 'radiologyOrder',
+      display: order.display,
       patient: patientUuid,
       careSetting: careSettingUuid,
       orderer: order.orderer,
       encounter: encounterUuid,
       concept: order.testType.conceptUuid,
       instructions: order.instructions,
+      orderType: radiologyOrderTypeUuid,
       // orderReason: order.orderReason,
-      commentToFulfiller: order.commentToFulfiller,
+      // commentToFulfiller: order.commentToFulfiller,
       laterality: order.laterality,
       bodySite: order.bodySite,
-      modality: order.modality,
+      // modality: order.modality,
       urgency: order.urgency,
     };
     if (order.urgency === 'ON_SCHEDULED_DATE') {
@@ -80,11 +94,12 @@ export function prepImagingOrderPostData(
       encounter: encounterUuid,
       concept: order.testType.conceptUuid,
       instructions: order.instructions,
+      orderType: radiologyOrderTypeUuid,
       // orderReason: order.orderReason,
-      commentToFulfiller: order.commentToFulfiller,
+      // commentToFulfiller: order.commentToFulfiller,
       laterality: order.laterality,
       bodySite: order.bodySite,
-      modality: order.modality,
+      // modality: order.modality,
     };
     if (order.urgency === 'ON_SCHEDULED_DATE') {
       payload['scheduledDate'] = order.scheduleDate instanceof Date ? order.scheduleDate.toISOString() : order.scheduleDate;
@@ -100,11 +115,12 @@ export function prepImagingOrderPostData(
       orderer: order.orderer,
       encounter: encounterUuid,
       concept: order.testType.conceptUuid,
+      orderType: radiologyOrderTypeUuid,
       // orderReason: order.orderReason,
-      commentToFulfiller: order.commentToFulfiller,
+      // commentToFulfiller: order.commentToFulfiller,
       laterality: order.laterality,
       bodySite: order.bodySite,
-      modality: order.modality,
+      // modality: order.modality,
     };
     if (order.urgency === 'ON_SCHEDULED_DATE') {
       payload['scheduledDate'] = order.scheduleDate instanceof Date ? order.scheduleDate.toISOString() : order.scheduleDate;

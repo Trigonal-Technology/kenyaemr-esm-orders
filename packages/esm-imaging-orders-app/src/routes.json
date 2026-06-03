@@ -56,32 +56,26 @@
       }
     }
   ],
-  "workspaces": [
+  "workspaces2": [
     {
-      "name": "add-imaging-order",
-      "type": "order",
+      "name": "add-imaging-order-workspace",
       "component": "addImagingOrderWorkspace",
-      "title": "Add Imaging order"
+      "window": "patient-chart-order-basket"
     },
     {
       "name": "imaging-report-form",
       "component": "imagingReportForm",
-      "title": "Imaging Report Form",
-      "type": "form",
-      "width": "extra-wide"
+      "window": "patient-chart-order-basket"
     },
     {
       "name": "imaging-review-form",
-      "type": "order",
       "component": "imagingReviewForm",
-      "title": "Review form"
+      "window": "patient-chart-order-basket"
     },
     {
       "name": "search-patient-workspace",
       "component": "searchPatientWorkspace",
-      "title": "Search patient",
-      "type": "other-form",
-      "width": "extra-wide"
+      "window": "patient-chart-order-basket"
     }
   ],
   "modals": [
@@ -106,10 +100,8 @@
     {
       "name": "add-imaging-order-workspace-group",
       "members": [
-        "add-drug-order",
         "order-basket",
-        "add-lab-order",
-        "add-imaging-order"
+        "add-imaging-order-workspace"
       ]
     }
   ]

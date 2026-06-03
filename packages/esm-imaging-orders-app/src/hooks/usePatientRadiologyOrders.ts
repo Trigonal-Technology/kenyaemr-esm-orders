@@ -24,7 +24,7 @@ export function usePatientRadiologyOrders(
     const { mutate: globalMutate } = useSWRConfig();
 
     const responseFormat =
-        'custom:(uuid,orderNumber,patient:(uuid,display,identifiers,person:(uuid,display,age,gender)),concept:(uuid,display,conceptClass),action,careSetting,orderer:ref,urgency,instructions,modality,orderReasonNonCoded,orderReason,bodySite,laterality,commentToFulfiller,display,fulfillerStatus,dateStopped,scheduledDate,dateActivated,fulfillerComment)';
+        'custom:(uuid,orderNumber,patient:(uuid,display,identifiers,person:(uuid,display,age,gender)),concept:(uuid,display,conceptClass),action,careSetting,encounter:(uuid,display),orderer:ref,urgency,instructions,orderReasonNonCoded,orderReason,bodySite,laterality,commentToFulfiller,display,fulfillerStatus,dateStopped,scheduledDate,dateActivated,fulfillerComment,accessionNumber)';
 
     // Build URL - use isStopped=false instead of status=ACTIVE when using orderTypes
     // because the API doesn't support both parameters together
@@ -47,8 +47,6 @@ export function usePatientRadiologyOrders(
         // AND exclude superseded orders: action=NEW, stopped, and not declined/completed
         return data.data.results
             .filter((order) => {
-                const isRadiology = order.concept?.conceptClass?.uuid === radiologyConceptClassUuid;
-
                 // User logic: exclude if action=NEW AND dateStopped!=null AND fulfillerStatus NOT IN (DECLINED, COMPLETED)
                 const isSuperseded =
                     order.action === 'NEW' &&
@@ -56,10 +54,10 @@ export function usePatientRadiologyOrders(
                     order.fulfillerStatus !== 'DECLINED' &&
                     order.fulfillerStatus !== 'COMPLETED';
 
-                return isRadiology && !isSuperseded;
+                return !isSuperseded;
             })
             .sort((a, b) => new Date(b.dateActivated).getTime() - new Date(a.dateActivated).getTime());
-    }, [data, radiologyConceptClassUuid]);
+    }, [data]);
 
     const mutateOrders = useCallback(
         () =>

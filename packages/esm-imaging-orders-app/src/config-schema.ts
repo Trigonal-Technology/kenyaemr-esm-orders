@@ -32,6 +32,21 @@ export const configSchema = {
       _default: [],
     },
   },
+  careSettingUuid: {
+    _type: Type.String,
+    _description: 'Care Setting UUID',
+    _default: '6f0c9a92-6f24-11e3-af88-005056821db0',
+  },
+  radiologyReportFormUuid: {
+    _type: Type.String,
+    _description: 'Radiology Report Form UUID',
+    _default: '052e2315-ffcc-36bd-a6ce-6851a9414361',
+  },
+  ohifViewerUrl: {
+    _type: Type.String,
+    _description: 'OHIF Viewer URL',
+    _default: '/ohif/viewer',
+  },
 };
 
 interface OrderReason {
@@ -39,6 +54,7 @@ interface OrderReason {
   required: boolean;
   orderReasons: Array<string>;
 }
+
 export type ImagingConfig = {
   radiologyConceptSetUuid: string;
   orders: {
@@ -46,6 +62,8 @@ export type ImagingConfig = {
     labOrderableConcepts: Array<string>;
     radiologyOrderTypeUuid: string;
   };
-  labTestsWithOrderReasons: Array<OrderReason>;
+  careSettingUuid: string;
   radiologyConceptClassUuid: string;
+  radiologyReportFormUuid: string;
+  ohifViewerUrl: string;
 };

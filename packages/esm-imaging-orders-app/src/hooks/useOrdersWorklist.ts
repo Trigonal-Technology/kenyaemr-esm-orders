@@ -14,7 +14,7 @@ const createApiUrl = (
   fulfillerStatus: string,
 ) => {
   const responseFormat =
-    'custom:(uuid,orderNumber,patient:(uuid,display,identifiers,person:(uuid,display,age,gender)),concept:(uuid,display,conceptClass),action,careSetting,orderer:ref,urgency,instructions,modality,orderReasonNonCoded,orderReason,bodySite,laterality,commentToFulfiller,display,fulfillerStatus,dateStopped,scheduledDate,dateActivated,fulfillerComment)';
+    'custom:(uuid,orderNumber,patient:(uuid,display,identifiers,person:(uuid,display,age,gender)),concept:(uuid,display,conceptClass),action,careSetting,orderer:ref,urgency,instructions,orderReasonNonCoded,orderReason,bodySite,laterality,commentToFulfiller,display,fulfillerStatus,dateStopped,scheduledDate,dateActivated,fulfillerComment,accessionNumber)';
   const orderTypeParam = `orderTypes=${OrderTypeUuid}&activatedOnOrAfterDate=${activatedOnOrAfterDate}&activatedOnOrBeforeDate=${activatedOnOrBeforeDate}&isStopped=false&fulfillerStatus=${fulfillerStatus}&v=${responseFormat}`;
 
   return `${restBaseUrl}/order?${orderTypeParam}`;
@@ -45,8 +45,7 @@ export function useOrdersWorkList(activatedOnOrAfterDate: string, fulfillerStatu
 
   const filterOrders = useCallback(
     (order: Result) => {
-      const baseConditions =
-        order.dateStopped === null && order.concept.conceptClass.uuid === radiologyConceptClassUuid;
+      const baseConditions = order.dateStopped === null;
 
       switch (fulfillerStatus) {
         case '':
@@ -60,7 +59,7 @@ export function useOrdersWorkList(activatedOnOrAfterDate: string, fulfillerStatu
           return false;
       }
     },
-    [radiologyConceptClassUuid, fulfillerStatus],
+    [fulfillerStatus],
   );
 
   const sortedOrders = useMemo(() => {

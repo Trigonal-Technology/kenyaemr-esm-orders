@@ -34,6 +34,7 @@ import {
     useConfig,
     showModal,
     launchWorkspace,
+    launchWorkspace2,
     ViewIcon
 } from '@openmrs/esm-framework';
 import { CardHeader, EmptyState, ErrorState, PatientChartPagination, useOrderBasket } from '@openmrs/esm-patient-common-lib';
@@ -43,8 +44,10 @@ import { usePatientRadiologyOrders } from '../../../hooks/usePatientRadiologyOrd
 import { type Result } from '../../../imaging-tabs/work-list/work-list.resource';
 import { type ImagingOrderBasketItem } from '../../../types';
 import { OrderDetail } from './order-detail.component';
-import { prepImagingOrderPostData } from '../../../form/imaging-orders/api';
+import { createPrepImagingOrderPostData, prepImagingOrderPostData } from '../../../form/imaging-orders/api';
 import styles from './radiology-orders-table.scss';
+import type { ImagingConfig } from '../../../config-schema';
+import { useLaunchWorkspaceRequiringVisit } from '@openmrs/esm-patient-common-lib';
 
 interface RadiologyOrdersTableProps {
     patientUuid: string;
@@ -84,8 +87,17 @@ const RadiologyOrdersTable: React.FC<RadiologyOrdersTableProps> = ({
     const [selectedFromDate, setSelectedFromDate] = useState<string>(null);
     const [selectedToDate, setSelectedToDate] = useState<string>(null);
 
+    const patient = { uuid: patientUuid, id: patientUuid };
+
+    const { orders: configOrders, careSettingUuid } = useConfig<ImagingConfig>();
+    const orderTypeUuid = configOrders.radiologyOrderTypeUuid;
+
     // Order basket for tracking order modifications
-    const { orders, setOrders } = useOrderBasket<ImagingOrderBasketItem>('imaging', prepImagingOrderPostData);
+    const { orders, setOrders } = useOrderBasket<ImagingOrderBasketItem>(
+        patient as any,
+        orderTypeUuid,
+        createPrepImagingOrderPostData(configOrders.radiologyOrderTypeUuid, careSettingUuid),
+    );
 
     // Fetch ALL radiology orders for this patient (including cancelled, in-progress, etc.)
     const {
@@ -200,10 +212,23 @@ const RadiologyOrdersTable: React.FC<RadiologyOrdersTableProps> = ({
         }
     };
 
+    const launchFormWorkspace = useLaunchWorkspaceRequiringVisit(
+        patientUuid,
+        'patient-form-entry-workspace'
+    );
+
+    const openForm = () => {
+        launchFormWorkspace({
+            workspaceTitle: 'Test Form 1',
+            form: { uuid: '2ddde996-b1c3-37f1-a53e-378dd1a4f6b5' },
+            encounterUuid: '',
+        });
+    };
+
     const handleAddOrderClick = useCallback(() => {
         // Launch the imaging order workspace for creating a new order
-        launchWorkspace('add-imaging-order');
-    }, []);
+        launchWorkspace2('add-imaging-order-workspace', { orderTypeUuid });
+    }, [orderTypeUuid]);
 
     return (
         <>
@@ -339,6 +364,7 @@ const RadiologyOrdersTable: React.FC<RadiologyOrdersTableProps> = ({
                                                                                         responsiveSize={responsiveSize}
                                                                                         orders={orders}
                                                                                         setOrders={setOrders}
+                                                                                        orderTypeUuid={orderTypeUuid}
                                                                                     />
                                                                                 </TableCell>
                                                                             )}
@@ -400,12 +426,14 @@ function OrderActions({
     orderItem,
     responsiveSize,
     orders,
-    setOrders
+    setOrders,
+    orderTypeUuid
 }: {
     orderItem: Result;
     responsiveSize: string;
     orders: Array<ImagingOrderBasketItem>;
     setOrders: (orders: Array<ImagingOrderBasketItem>) => void;
+    orderTypeUuid: string;
 }) {
     const { t } = useTranslation();
 
@@ -425,23 +453,27 @@ function OrderActions({
                 label: orderItem.concept?.display,
                 conceptUuid: orderItem.concept?.uuid,
             },
-            instructions: orderItem.instructions,
+            // Convert null to undefined for optional string fields to match zod schema
+            instructions: orderItem.instructions ?? undefined,
             orderReason: orderItem.orderReason?.uuid,
-            orderReasonNonCoded: orderItem.orderReasonNonCoded,
-            laterality: orderItem.laterality,
-            bodySite: orderItem.bodySite?.display || '',
+            orderReasonNonCoded: orderItem.orderReasonNonCoded ?? undefined,
+            laterality: orderItem.laterality ?? undefined,
+            bodySite: orderItem.bodySite?.uuid ?? undefined, // Use UUID, not display name
             scheduledDate: orderItem.scheduledDate ? new Date(orderItem.scheduledDate) : undefined,
-            commentToFulfiller: orderItem.commentToFulfiller,
-        };
+            // commentToFulfiller: orderItem.commentToFulfiller,
+            encounterUuid: orderItem.encounter?.uuid,
+            visit: undefined,
+        }
 
         // Add order to basket FIRST (this is the key - matching drug order pattern)
         setOrders([...orders, imagingOrder]);
 
         // Then launch the imaging order workspace for editing
-        launchWorkspace('add-imaging-order', {
+        launchWorkspace2('add-imaging-order-workspace', {
             order: imagingOrder,
+            orderTypeUuid: orderTypeUuid, // Use the orderTypeUuid from config, not from the order
         });
-    }, [orderItem, orders, setOrders]);
+    }, [orderItem, orders, setOrders, orderTypeUuid]);
 
     const handleCancelClick = useCallback(() => {
         // Show the reject order modal
@@ -480,6 +512,7 @@ function OrderActions({
 
 function RadiologyOrderDetails({ order, patientId }: RadiologyOrderDetailsProps) {
     const { t } = useTranslation();
+    const { ohifViewerUrl } = useConfig<ImagingConfig>();
 
     return (
         <div style={{ padding: '1rem' }}>
@@ -507,10 +540,13 @@ function RadiologyOrderDetails({ order, patientId }: RadiologyOrderDetailsProps)
             <IconButton
                 label="View Image"
                 align="right"
+                disabled={!order.accessionNumber}
                 onClick={() => {
-                    window.open(`weasis://$dicom:rs --url "http://34.66.106.64:8080/dcm4chee-arc/aets/DCM4CHEE/rs" -r"patientID=${patientId}" --query-ext "&includedefaults=false`)
+                    if (order.accessionNumber) {
+                        const baseUrl = ohifViewerUrl.startsWith('http') ? ohifViewerUrl : window.location.origin + ohifViewerUrl;
+                        window.open(`${baseUrl}?StudyInstanceUIDs=${order.accessionNumber}`, '_blank');
                     }
-                }
+                }}
             >
                 <ViewIcon icon-color="white" />
             </IconButton>

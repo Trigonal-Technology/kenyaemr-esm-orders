@@ -23,19 +23,21 @@ export interface Concept {
 }
 
 export interface ImagingOrderBasketItem extends OrderBasketItem {
-  testType?: {
+  testType: {
     label: string;
     conceptUuid: string;
   };
-  urgency?: OrderUrgency;
+  urgency: OrderUrgency;
   instructions?: string;
   orderReason?: string;
   orderReasonNonCoded?: string;
   scheduleDate?: Date | string;
-  commentToFulfiller?: string;
+  // commentToFulfiller?: string;
   laterality?: string;
   bodySite?: string;
-  modality?: string;
+  // modality?: string;
+  orderer?: string;
+  careSetting?: string;
 }
 
 export type OrderFrequency = CommonImagingValueCoded;

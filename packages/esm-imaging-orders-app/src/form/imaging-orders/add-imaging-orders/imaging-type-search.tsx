@@ -3,19 +3,25 @@ import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { Button, ButtonSkeleton, Search, SkeletonText, Tile } from '@carbon/react';
 import { ArrowRight, ShoppingCartArrowDown, ShoppingCartArrowUp } from '@carbon/react/icons';
-import { useDebounce, useLayoutType, useSession, ResponsiveWrapper, closeWorkspace, launchWorkspace } from '@openmrs/esm-framework';
+import { useDebounce, useLayoutType, useSession, ResponsiveWrapper, closeWorkspace, launchWorkspace, useConfig } from '@openmrs/esm-framework';
 import { useOrderBasket } from '@openmrs/esm-patient-common-lib';
-import { prepImagingOrderPostData } from '../api';
+import { createPrepImagingOrderPostData, prepImagingOrderPostData } from '../api';
 import { type ImagingType, useImagingTypes } from './useImagingTypes';
 import { createEmptyLabOrder } from './imaging-order';
 import styles from './imaging-type-search.scss';
 import { type ImagingOrderBasketItem } from '../../../types';
+import type { Workspace2DefinitionProps, Visit } from '@openmrs/esm-framework';
+import type { ImagingConfig } from '../../../config-schema';
 
 export interface TestTypeSearchProps {
   openLabForm: (searchResult: ImagingOrderBasketItem) => void;
+  orderTypeUuid: string;
+  closeWorkspace: Workspace2DefinitionProps['closeWorkspace'];
+  patient: any;
+  visit: Visit;
 }
 
-export function TestTypeSearch({ openLabForm }: TestTypeSearchProps) {
+export function TestTypeSearch({ openLabForm, patient, orderTypeUuid, closeWorkspace, visit }: TestTypeSearchProps) {
   const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm);
@@ -47,6 +53,10 @@ export function TestTypeSearch({ openLabForm }: TestTypeSearchProps) {
         searchTerm={debouncedSearchTerm}
         openOrderForm={openLabForm}
         focusAndClearSearchInput={focusAndClearSearchInput}
+        patient={patient}
+        orderTypeUuid={orderTypeUuid}
+        closeWorkspace={closeWorkspace}
+        visit={visit}
       />
     </>
   );
@@ -56,9 +66,21 @@ interface TestTypeSearchResultsProps {
   searchTerm: string;
   openOrderForm: (searchResult: ImagingOrderBasketItem) => void;
   focusAndClearSearchInput: () => void;
+  patient: any;
+  orderTypeUuid: string;
+  closeWorkspace: Workspace2DefinitionProps['closeWorkspace'];
+  visit: Visit;
 }
 
-function TestTypeSearchResults({ searchTerm, openOrderForm, focusAndClearSearchInput }: TestTypeSearchResultsProps) {
+function TestTypeSearchResults({
+  searchTerm,
+  openOrderForm,
+  focusAndClearSearchInput,
+  patient,
+  orderTypeUuid,
+  closeWorkspace,
+  visit,
+}: TestTypeSearchResultsProps) {
   const { t } = useTranslation();
   const isTablet = useLayoutType() === 'tablet';
   const { testTypes, isLoading, error } = useImagingTypes(searchTerm);
@@ -103,7 +125,15 @@ function TestTypeSearchResults({ searchTerm, openOrderForm, focusAndClearSearchI
           )}
           <div className={styles.resultsContainer}>
             {testTypes.map((testType) => (
-              <TestTypeSearchResultItem key={testType.conceptUuid} testType={testType} openOrderForm={openOrderForm} />
+              <TestTypeSearchResultItem
+                key={testType.conceptUuid}
+                testType={testType}
+                openOrderForm={openOrderForm}
+                patient={patient}
+                orderTypeUuid={orderTypeUuid}
+                closeWorkspace={closeWorkspace}
+                visit={visit}
+              />
             ))}
           </div>
         </div>
@@ -133,12 +163,28 @@ function TestTypeSearchResults({ searchTerm, openOrderForm, focusAndClearSearchI
 interface TestTypeSearchResultItemProps {
   testType: ImagingType;
   openOrderForm: (searchResult: ImagingOrderBasketItem) => void;
+  patient: any;
+  orderTypeUuid: string;
+  closeWorkspace: Workspace2DefinitionProps['closeWorkspace'];
+  visit: Visit;
 }
 
-const TestTypeSearchResultItem: React.FC<TestTypeSearchResultItemProps> = ({ testType, openOrderForm }) => {
+const TestTypeSearchResultItem: React.FC<TestTypeSearchResultItemProps> = ({
+  testType,
+  openOrderForm,
+  patient,
+  orderTypeUuid,
+  closeWorkspace,
+  visit,
+}) => {
   const isTablet = useLayoutType() === 'tablet';
   const session = useSession();
-  const { orders, setOrders } = useOrderBasket<ImagingOrderBasketItem>('imaging', prepImagingOrderPostData);
+  const { orders: configOrders, careSettingUuid } = useConfig<ImagingConfig>();
+  const { orders, setOrders } = useOrderBasket<ImagingOrderBasketItem>(
+    patient,
+    orderTypeUuid,
+    createPrepImagingOrderPostData(configOrders.radiologyOrderTypeUuid, careSettingUuid),
+  );
   const testTypeAlreadyInBasket = useMemo(
     () => orders?.some((order) => order.testType.conceptUuid === testType.conceptUuid),
     [orders, testType],
@@ -146,22 +192,19 @@ const TestTypeSearchResultItem: React.FC<TestTypeSearchResultItemProps> = ({ tes
 
   const createLabOrder = useCallback(
     (testType: ImagingType) => {
-      return createEmptyLabOrder(testType, session.currentProvider.uuid);
+      return createEmptyLabOrder(testType, session.currentProvider.uuid, visit);
     },
-    [session.currentProvider?.uuid],
+    [session.currentProvider?.uuid, visit],
   );
 
   const { t } = useTranslation();
 
   const addToBasket = useCallback(() => {
     const labOrder = createLabOrder(testType);
-    labOrder.isOrderIncomplete = true;
+    // labOrder.isOrderIncomplete = true;
     setOrders([...orders, labOrder]);
-    closeWorkspace('add-imaging-order', {
-      ignoreChanges: true,
-      onWorkspaceClose: () => launchWorkspace('order-basket'),
-    });
-  }, [orders, setOrders, createLabOrder, testType]);
+    // closeWorkspace({ discardUnsavedChanges: true });
+  }, [orders, setOrders, createLabOrder, testType, closeWorkspace]);
 
   const removeFromBasket = useCallback(() => {
     setOrders(orders.filter((order) => order.testType.conceptUuid !== testType.conceptUuid));
@@ -208,9 +251,8 @@ const TestTypeSearchResultItem: React.FC<TestTypeSearchResultItemProps> = ({ tes
 
 const TestTypeSearchSkeleton = () => {
   const isTablet = useLayoutType() === 'tablet';
-  const tileClassName = `${isTablet ? `${styles.tabletSearchResultTile}` : `${styles.desktopSearchResultTile}`} ${
-    styles.skeletonTile
-  }`;
+  const tileClassName = `${isTablet ? `${styles.tabletSearchResultTile}` : `${styles.desktopSearchResultTile}`} ${styles.skeletonTile
+    }`;
   return (
     <div className={styles.searchResultSkeletonWrapper}>
       <div className={styles.orderBasketSearchResultsHeader}>

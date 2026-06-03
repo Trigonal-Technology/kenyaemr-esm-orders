@@ -68,15 +68,14 @@ export function useImagingOrderStats(fulfillerStatus: string) {
 
     return data.data.results.filter((order) => {
       const isOrderNotStopped = order.dateStopped === null;
-      const isRadiologyOrder = order.concept.conceptClass.uuid === radiologyConceptClassUuid;
       
-      if (!isOrderNotStopped || !isRadiologyOrder) {
+      if (!isOrderNotStopped) {
         return false;
       }
 
       return matchesFulfillerStatus(order, fulfillerStatus);
     });
-  }, [data, fulfillerStatus, radiologyConceptClassUuid]);
+  }, [data, fulfillerStatus]);
 
   // Calculate order count
   const count = useMemo(() => radiologyOrders?.length ?? 0, [radiologyOrders]);

@@ -3,14 +3,12 @@ import { mutate } from 'swr';
 import { useTranslation } from 'react-i18next';
 import {
   ExtensionSlot,
-  launchWorkspaceGroup,
+  launchWorkspaceGroup2,
   setCurrentVisit,
   useVisit,
   showSnackbar,
   type DefaultWorkspaceProps,
 } from '@openmrs/esm-framework';
-import { getPatientChartStore } from '@openmrs/esm-patient-common-lib';
-
 import styles from './search-patient-workspace.scss';
 
 const SearchPatientWorkspace: React.FC<DefaultWorkspaceProps> = ({ closeWorkspace }) => {
@@ -33,26 +31,16 @@ const SearchPatientWorkspace: React.FC<DefaultWorkspaceProps> = ({ closeWorkspac
       }
 
       setCurrentVisit(patientUuid, activeVisit.uuid);
-      launchWorkspaceGroup('add-imaging-order-workspace-group', {
+      launchWorkspaceGroup2('patient-chart', {
         state: {
           patientUuid,
         },
-        onWorkspaceGroupLaunch: () => {
-          const store = getPatientChartStore();
-          store.setState({
-            patientUuid,
-          });
-        },
         workspaceToLaunch: {
-          name: 'add-imaging-order',
+          name: 'add-imaging-order-workspace',
         },
         workspaceGroupCleanup: () => {
           mutate((key) => typeof key === 'string' && key.startsWith('/ws/rest/v1/order'), undefined, {
             revalidate: true,
-          });
-          const store = getPatientChartStore();
-          store.setState({
-            patientUuid: undefined,
           });
           setCurrentVisit(null, null);
         },

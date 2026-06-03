@@ -30,12 +30,13 @@ const WorkList: React.FC<WorkListProps> = ({ fulfillerStatus }) => {
             actions={[
               {
                 actionName: 'view-radiology-report',
-                order: 1,
+                order: 2,
               },
-              { actionName: 'imaging-report-form', order: 2 },
+              { actionName: 'imaging-report-form', order: 3 },
+              { actionName: 'complete-imaging-order', order: 1 },
               {
                 actionName: 'reject-imaging-order-modal',
-                order: 3,
+                order: 4,
               },
             ]}
             title={t('workList', 'Work List')}
