@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json.openmrs.org/routes.schema.json",
+  "backendDependencies": {
+    "fhir2": ">=1.2",
+    "webservices.rest": ">=2.24.0"
+  },
+  "extensions": [
+    {
+      "name": "bed-order-panel",
+      "component": "bedOrderPanel",
+      "slot": "order-basket-slot",
+      "order": 6
+    }
+  ],
+  "workspaces": [
+    {
+      "name": "add-bed-order",
+      "type": "order",
+      "component": "addBedOrderWorkspace",
+      "title": "Add bed order"
+    }
+  ],
+  "workspaces2": [
+    {
+      "name": "add-bed-order",
+      "component": "addBedOrderWorkspace",
+      "window": "patient-chart-order-basket"
+    }
+  ],
+  "pages": [
+    {
+      "component": "root",
+      "route": "bedorder"
+    }
+  ]
+}
